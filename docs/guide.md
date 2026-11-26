@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/finnick-header-dark.svg">
-    <img src="assets/finnick-header.svg" alt="Finnick" width="320">
-  </picture>
+  <img src="assets/finnick-header.svg" alt="Finnick" width="320">
 </p>
 
 # Guide: secrets with SOPS, age and Finnick
