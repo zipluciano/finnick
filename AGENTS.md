@@ -6,8 +6,8 @@ Instructions for coding assistants working on Finnick. People should read
 ## What this is
 
 A local web UI for repositories that keep secrets with SOPS. One Go binary (`finnick ui`) serves an
-embedded React UI on `127.0.0.1` and opens the repository it runs in. It reads and edits SOPS files; what
-comes next is in `docs/roadmap.md`.
+embedded React UI on `127.0.0.1` and opens the repository it runs in. It reads and edits SOPS files and
+the people in `.sops.yaml`; what comes next is in `docs/roadmap.md`.
 
 ## Commands
 
@@ -28,7 +28,7 @@ Workspace tests run the real `sops` binary and skip without it. Use throwaway ag
 
 ```
 cmd/finnick/          CLI: ui, ls, version
-internal/workspace/   .sops.yaml parsing, file discovery, drift, decryption and writes (getsops/sops/v3)
+internal/workspace/   .sops.yaml parsing and editing, file discovery, drift, decryption and writes (getsops/sops/v3)
 internal/server/      loopback HTTP server, auth, JSON API
 internal/settings/    theme and locale in ~/.config/finnick/settings.json
 web/src/              React + TypeScript UI (App.tsx, api.ts, views/, components/)
@@ -48,6 +48,9 @@ docs/                 guide (en, pt-BR), architecture, roadmap, adr/
 - **Writes** ([ADR 0009](docs/adr/0009-writing-sops-files.md)): go through `resolveWrite`, check the
   file's version, keep the data key unless the operation is a rotation, and replace files atomically.
   Test written files with the real `sops` binary.
+- **`.sops.yaml`** ([ADR 0010](docs/adr/0010-editing-sops-yaml.md)): change it only through `EditConfig`,
+  which edits the text in place and checks the result means exactly the requested change. Tests compare
+  the whole edited file with the expected text.
 - **Errors**: the API returns error codes (`not_recipient`, `integrity`, …), never translated sentences.
   The UI translates them under `errors.*`.
 - **Translations**: every user-facing string uses `t()`/`tp()`/`tn()` and is added to `en.ts`,

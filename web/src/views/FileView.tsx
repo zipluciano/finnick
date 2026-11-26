@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { api, ApiError, type Edit, type Entry, type Recipient, type Revealed, type SecretFile, type Workspace } from "../api";
 import { Icon, type IconName } from "../components/Icon";
-import { Banner, Command, CopyButton, Empty, RecipientRow } from "../components/ui";
+import { Banner, Command, CopyButton, Empty, RecipientRow, useAction } from "../components/ui";
 import { access, flat, isMe, newKeyPath, recipientKey } from "../model";
 import { usePrefs } from "../prefs";
 
@@ -68,25 +68,6 @@ export function FileView({ ws, file, onChanged }: { ws: Workspace; file: SecretF
 }
 
 /** Runs an action once at a time and keeps its error. */
-function useAction() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const run = async (action: () => Promise<unknown>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await action();
-      return true;
-    } catch (e) {
-      setError(e);
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-  return { busy, error, run };
-}
-
 function DriftBanner({ file, onChanged }: { file: SecretFile; onChanged: () => void }) {
   const { t, tp, errorText } = usePrefs();
   const { busy, error, run } = useAction();

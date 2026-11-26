@@ -215,20 +215,22 @@ O que você encontra na interface:
   - **aguardando updatekeys**: está na regra, mas o arquivo ainda não foi cifrado de novo para essa pessoa.
   - **removido da regra**: ainda consegue decifrar, mas saiu do `.sops.yaml`.
 - **Pessoas e chaves:** uma matriz de todas as chaves contra todos os arquivos. É a forma mais rápida de
-  responder "quem lê produção?".
+  responder "quem lê produção?". **Adicionar pessoa** dá nome a uma chave nova no `.sops.yaml` e a coloca nas
+  regras que você escolher; cada nome abre a página da pessoa, onde você muda as regras dela ou a remove. O
+  Finnick altera só as linhas envolvidas, então comentários e formatação continuam iguais.
 - **Regras:** as `creation_rules` na ordem em que o sops aplica, os arquivos que cada uma cobre e os arquivos
   que nenhuma regra cobre.
 - **Rodapé:** tema (sistema, claro, escuro) e idioma (English, Português, Español). As escolhas ficam salvas
   em `~/.config/finnick/settings.json`.
 
 Arquivos binários e YAML com vários documentos são somente leitura no Finnick: edite-os com `sops edit` e
-depois clique em reescanear (↻). Gestão de pessoas e git pela interface estão no [roadmap](roadmap.md).
+depois clique em reescanear (↻). Edição de regras e git pela interface estão no [roadmap](roadmap.md).
 
 ## 7. Dê acesso a alguém
 
 1. A pessoa segue o [passo 2](#2-crie-a-sua-chave-age) e envia a chave pública `age1…`.
-2. Você adiciona a chave em `keys`, com um nome, e coloca esse nome nas regras dos ambientes que a pessoa pode
-   ler:
+2. No Finnick, **Pessoas e chaves → Adicionar pessoa**: um nome, a chave e as regras dos ambientes que a pessoa
+   pode ler. Ou à mão: adicione a chave em `keys`, com um nome, e coloque esse nome nessas regras:
    ```yaml
    keys:
      - &ana age1qyq…ana
@@ -253,7 +255,10 @@ depois clique em reescanear (↻). Gestão de pessoas e git pela interface estã
 
 ## 8. Tire o acesso de alguém
 
-1. Remova a chave de `keys` e das regras.
+1. No Finnick, abra a pessoa em **Pessoas e chaves** e use **Remover**: a chave sai de todas as regras e o nome
+   dela sai de `keys`. A página passa a listar cada arquivo que a pessoa ainda consegue decifrar, com
+   **Atualizar chaves e rotacionar** para cada um (ou todos de uma vez), o que cobre o passo 2 e a rotação do
+   passo 3. À mão: remova a chave de `keys` e das regras.
 2. Atualize as chaves como no [passo 7](#7-dê-acesso-a-alguém). Antes disso, o Finnick mostra a pessoa como
    **removido da regra**.
 3. **Importante:** a pessoa continua conseguindo decifrar as versões antigas que estão no histórico do git. Para

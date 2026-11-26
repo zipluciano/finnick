@@ -10,7 +10,15 @@ export type Rule = {
   keyGroups: Recipient[][] | null;
 };
 
-export type Config = { path: string; rules: Rule[] | null };
+/** The parsed .sops.yaml. `version` must be sent back with changes; `keys` are its named age keys. */
+export type Config = { path: string; version: string; rules: Rule[] | null; keys: Recipient[] };
+
+/** One change to .sops.yaml; keys are age public keys and rules are positions in creation_rules. */
+export type ConfigOp =
+  | { op: "addPerson"; name: string; key: string }
+  | { op: "removePerson"; key: string }
+  | { op: "grant"; rule: number; key: string }
+  | { op: "revoke"; rule: number; key: string };
 
 export type Identity = { source?: string; recipients: string[] | null; error?: string };
 
@@ -82,6 +90,8 @@ export const api = {
     call<Revealed>("/api/create", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path, edits }) }),
   edit: (path: string, version: string, edits: Edit[]) =>
     call<Revealed>("/api/edit", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path, version, edits }) }),
+  config: (version: string, ops: ConfigOp[]) =>
+    call<Config>("/api/config", { method: "POST", headers: writeHeaders, body: JSON.stringify({ version, ops }) }),
   settings: () => call<Settings>("/api/settings"),
   saveSettings: (s: Settings) =>
     call<Settings>("/api/settings", { method: "PUT", headers: writeHeaders, body: JSON.stringify(s) }),

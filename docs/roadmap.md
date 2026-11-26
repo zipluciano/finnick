@@ -22,8 +22,8 @@
 
 ## v0.3: people and rules
 
-- [ ] Add a person: paste an age public key, give it a name (anchor), choose rules
-- [ ] Remove a person, with a guided rotation checklist for what they could read
+- [x] Add a person: paste an age public key, give it a name (anchor), choose rules
+- [x] Remove a person, with a guided rotation checklist for what they could read
 - [ ] Create/reorder rules with a live preview of which files each rule matches
 - [ ] "Request access" flow: a new member generates a key in the UI and opens a PR adding it
 

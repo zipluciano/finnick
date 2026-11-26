@@ -94,6 +94,16 @@ func TestAuthFlow(t *testing.T) {
 	if w.Code != http.StatusBadRequest { // no edits
 		t.Fatalf("create with an incomplete body: %d %s", w.Code, w.Body)
 	}
+	if w := do(h, "POST", "/api/config", host, nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("config without session: %d", w.Code)
+	}
+	if w := do(h, "POST", "/api/config", host, withCookie); w.Code != http.StatusForbidden {
+		t.Fatalf("config without csrf header: %d", w.Code)
+	}
+	w = do(h, "POST", "/api/config", host, func(r *http.Request) { withCookie(r); r.Header.Set(csrfHeader, "1") })
+	if w.Code != http.StatusBadRequest { // no version or ops
+		t.Fatalf("config with an incomplete body: %d %s", w.Code, w.Body)
+	}
 	for _, endpoint := range []string{"/api/updatekeys", "/api/rotate"} {
 		if w := do(h, "POST", endpoint, host, withCookie); w.Code != http.StatusForbidden {
 			t.Fatalf("%s without csrf header: %d", endpoint, w.Code)
@@ -103,8 +113,10 @@ func TestAuthFlow(t *testing.T) {
 			t.Fatalf("%s with csrf header: %d %s", endpoint, w.Code, w.Body)
 		}
 	}
-	if w := do(h, "GET", "/api/edit", host, withCookie); w.Code == http.StatusOK {
-		t.Fatalf("edit over GET: %d", w.Code)
+	for _, endpoint := range []string{"/api/edit", "/api/config"} {
+		if w := do(h, "GET", endpoint, host, withCookie); w.Code == http.StatusOK {
+			t.Fatalf("%s over GET: %d", endpoint, w.Code)
+		}
 	}
 }
 

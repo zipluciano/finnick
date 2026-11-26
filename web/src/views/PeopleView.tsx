@@ -1,11 +1,15 @@
+import { useState } from "react";
 import type { Workspace } from "../api";
 import { Icon } from "../components/Icon";
+import { SyncAll } from "../components/SyncAll";
 import { Avatar, CopyButton, Empty, YouBadge } from "../components/ui";
-import { access, isMe, members, recipientKey, recipientLabel, shortId, typeLabel } from "../model";
+import { access, isMe, members, personHref, recipientKey, recipientLabel, shortId, typeLabel } from "../model";
 import { usePrefs } from "../prefs";
+import { AddPerson } from "./AddPerson";
 
-export function PeopleView({ ws }: { ws: Workspace }) {
+export function PeopleView({ ws, onChanged }: { ws: Workspace; onChanged: () => Promise<void> }) {
   const { t, tn } = usePrefs();
+  const [adding, setAdding] = useState(false);
   const people = members(ws);
   const config = <code>.sops.yaml</code>;
 
@@ -16,7 +20,21 @@ export function PeopleView({ ws }: { ws: Workspace }) {
           <h1>{t("people.title")}</h1>
           <p className="muted">{tn("people.subtitle", { config })}</p>
         </div>
+        {ws.config && !adding && (
+          <button type="button" className="btn btn--primary" onClick={() => setAdding(true)}>
+            <Icon name="plus" size={14} /> {t("people.add")}
+          </button>
+        )}
       </header>
+
+      {adding && (
+        <div className="page__section">
+          <AddPerson ws={ws} onDone={onChanged} onCancel={() => setAdding(false)} />
+        </div>
+      )}
+      <div className="page__section">
+        <SyncAll ws={ws} onChanged={onChanged} />
+      </div>
 
       {people.length === 0 ? (
         <Empty icon="users" title={t("people.emptyTitle")}>
@@ -44,7 +62,9 @@ export function PeopleView({ ws }: { ws: Workspace }) {
                         <Avatar r={p} />
                         <div className="stack stack--sm grow" title={p.id}>
                           <div className="row">
-                            <strong className="truncate">{recipientLabel(p)}</strong>
+                            <a className="truncate" href={personHref(p)}>
+                              <strong>{recipientLabel(p)}</strong>
+                            </a>
                             {isMe(ws, p) && <YouBadge />}
                           </div>
                           <div className="row xsmall muted">

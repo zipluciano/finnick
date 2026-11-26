@@ -214,19 +214,22 @@ What you will find:
   - **pending updatekeys**: in the rule, but the file was not re-encrypted for that person yet.
   - **removed from rule**: can still decrypt, but is no longer in `.sops.yaml`.
 - **People & keys:** a matrix of every key against every file. It is the fastest way to answer "who can read
-  production?".
+  production?". **Add person** names a new key in `.sops.yaml` and puts it in the rules you pick; each name
+  opens the person's page, where you change their rules or remove them. Finnick edits only the lines involved,
+  so comments and formatting stay.
 - **Rules:** the `creation_rules` in the order sops applies them, which files each one covers, and the files no
   rule covers.
 - **Footer:** theme (system, light, dark) and language (English, Português, Español). Choices are saved in
   `~/.config/finnick/settings.json`.
 
 Binary files and YAML files with several documents are read-only in Finnick: edit them with `sops edit`, then
-hit rescan (↻). People management and git from the UI are on the [roadmap](roadmap.md).
+hit rescan (↻). Editing rules and git from the UI are on the [roadmap](roadmap.md).
 
 ## 7. Give someone access
 
 1. The person follows [step 2](#2-create-your-age-key) and sends you their `age1…` public key.
-2. Add the key under `keys` with a name, and put that name in the rules for the environments they may read:
+2. In Finnick, **People & keys → Add person**: a name, the key, and the rules for the environments they may
+   read. Or by hand: add the key under `keys` with a name, and put that name in those rules:
    ```yaml
    keys:
      - &ana age1qyq…ana
@@ -249,7 +252,10 @@ hit rescan (↻). People management and git from the UI are on the [roadmap](roa
 
 ## 8. Remove someone's access
 
-1. Remove the key from `keys` and from the rules.
+1. In Finnick, open the person under **People & keys** and use **Remove**: the key leaves every rule and its
+   name leaves `keys`. The page then lists each file the person can still decrypt, with **Update keys and
+   rotate** for each one (or all at once), which covers step 2 and the rotation in step 3. By hand: remove the
+   key from `keys` and from the rules.
 2. Update keys as in [step 7](#7-give-someone-access). Until then, Finnick shows the person as **removed from
    rule**.
 3. **Important:** the person can still decrypt the old versions in git history. To really protect the secrets,
