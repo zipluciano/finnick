@@ -31,6 +31,9 @@ func newYAMLText(data []byte) (*yamlText, error) {
 }
 
 func (t *yamlText) bytes() []byte {
+	for len(t.lines) > 0 && blank(t.lines[len(t.lines)-1]) {
+		t.lines = t.lines[:len(t.lines)-1]
+	}
 	s := strings.Join(t.lines, "\n") + "\n"
 	if t.crlf {
 		s = strings.ReplaceAll(s, "\n", "\r\n")
@@ -195,7 +198,68 @@ func (t *yamlText) removeItem(seq *yaml.Node, i int) error {
 		return err
 	}
 	t.remove(first, last)
+	// The first item takes the blank line that separated it from the next one.
+	if i == 0 && first < len(t.lines) && blank(t.lines[first]) {
+		t.lines = append(t.lines[:first], t.lines[first+1:]...)
+	}
 	return t.parse()
+}
+
+// moveItem moves item from of the block sequence that get returns to position to, counted in the
+// final order. The item takes its head comments and the blank lines after it, so moving it back
+// restores the file.
+func (t *yamlText) moveItem(get func() *yaml.Node, from, to int) error {
+	seq := get()
+	if from == to {
+		return nil
+	}
+	if seq == nil || !isBlock(seq) || from < 0 || to < 0 || from >= len(seq.Content) || to >= len(seq.Content) {
+		return errLayout
+	}
+	first, last, err := t.itemSpan(seq, from)
+	if err != nil {
+		return err
+	}
+	if from < len(seq.Content)-1 {
+		for last+1 < len(t.lines) && blank(t.lines[last+1]) {
+			last++
+		}
+	} else if first > 0 && blank(t.lines[first-1]) {
+		first-- // the last item takes the separator above it instead
+	}
+	block := append([]string(nil), t.lines[first:last+1]...)
+	t.lines = append(t.lines[:first], t.lines[last+1:]...)
+	if err := t.parse(); err != nil {
+		return err
+	}
+	if seq = get(); seq == nil {
+		return errLayout
+	}
+	separated := blank(block[0]) || blank(block[len(block)-1])
+	for len(block) > 0 && blank(block[0]) {
+		block = block[1:]
+	}
+	for len(block) > 0 && blank(block[len(block)-1]) {
+		block = block[:len(block)-1]
+	}
+	if to < len(seq.Content) {
+		at, _, err := t.itemSpan(seq, to)
+		if err != nil {
+			return err
+		}
+		if separated {
+			block = append(block, "")
+		}
+		return t.insert(at, block...)
+	}
+	_, end, err := t.itemSpan(seq, len(seq.Content)-1)
+	if err != nil {
+		return err
+	}
+	if separated {
+		block = append([]string{""}, block...)
+	}
+	return t.insert(end+1, block...)
 }
 
 // flowItems splits a flow sequence written on one line into the source text of its items, and

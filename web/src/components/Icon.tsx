@@ -25,6 +25,8 @@ const paths = {
   pencil: "M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16zM13.5 6.5l4 4",
   trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3",
   plus: "M12 5v14M5 12h14",
+  arrowUp: "M12 19V5M5 12l7-7 7 7",
+  arrowDown: "M12 5v14M19 12l-7 7-7-7",
   globe: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20",
 } as const;
 

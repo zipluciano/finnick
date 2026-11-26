@@ -18,7 +18,11 @@ export type ConfigOp =
   | { op: "addPerson"; name: string; key: string }
   | { op: "removePerson"; key: string }
   | { op: "grant"; rule: number; key: string }
-  | { op: "revoke"; rule: number; key: string };
+  | { op: "revoke"; rule: number; key: string }
+  | { op: "addRule"; to: number; pathRegex: string; keys: string[] }
+  | { op: "setRegex"; rule: number; pathRegex: string }
+  | { op: "moveRule"; rule: number; to: number }
+  | { op: "deleteRule"; rule: number };
 
 export type Identity = { source?: string; recipients: string[] | null; error?: string };
 

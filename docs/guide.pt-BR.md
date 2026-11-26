@@ -119,6 +119,8 @@ creation_rules:
 - O `path_regex` é comparado com o caminho **relativo à pasta do `.sops.yaml`**. Rode os comandos do sops a
   partir da raiz do repositório.
 - Os nomes das âncoras (`&ana`) são o que o Finnick mostra na interface.
+- Você também pode escrever este arquivo pelo Finnick: **Adicionar pessoa** e **Adicionar regra** criam e
+  mantêm o arquivo arrumado.
 - O `.sops.yaml` só tem chaves **públicas**: versione-o normalmente.
 
 ## 4. Crie os arquivos de secrets
@@ -219,12 +221,15 @@ O que você encontra na interface:
   regras que você escolher; cada nome abre a página da pessoa, onde você muda as regras dela ou a remove. O
   Finnick altera só as linhas envolvidas, então comentários e formatação continuam iguais.
 - **Regras:** as `creation_rules` na ordem em que o sops aplica, os arquivos que cada uma cobre e os arquivos
-  que nenhuma regra cobre.
+  que nenhuma regra cobre. **Adicionar regra**, e as setas, o lápis e a lixeira de cada regra, alteram as
+  regras: nada é gravado até você salvar, e enquanto isso cada regra mostra os arquivos que vai cobrir e quais
+  deles vão precisar ter as chaves atualizadas. Num repositório sem `.sops.yaml`, a primeira regra cria o
+  arquivo.
 - **Rodapé:** tema (sistema, claro, escuro) e idioma (English, Português, Español). As escolhas ficam salvas
   em `~/.config/finnick/settings.json`.
 
 Arquivos binários e YAML com vários documentos são somente leitura no Finnick: edite-os com `sops edit` e
-depois clique em reescanear (↻). Edição de regras e git pela interface estão no [roadmap](roadmap.md).
+depois clique em reescanear (↻). Git pela interface está no [roadmap](roadmap.md).
 
 ## 7. Dê acesso a alguém
 

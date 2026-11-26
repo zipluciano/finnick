@@ -7,7 +7,7 @@ Instructions for coding assistants working on Finnick. People should read
 
 A local web UI for repositories that keep secrets with SOPS. One Go binary (`finnick ui`) serves an
 embedded React UI on `127.0.0.1` and opens the repository it runs in. It reads and edits SOPS files and
-the people in `.sops.yaml`; what comes next is in `docs/roadmap.md`.
+the people and rules in `.sops.yaml`; what comes next is in `docs/roadmap.md`.
 
 ## Commands
 

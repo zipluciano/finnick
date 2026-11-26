@@ -247,7 +247,8 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 		Version string               `json:"version"`
 		Ops     []workspace.ConfigOp `json:"ops"`
 	}
-	if !readJSON(w, r, &req) || req.Version == "" || len(req.Ops) == 0 {
+	// An empty version means "there is no .sops.yaml yet": the first rule creates it.
+	if !readJSON(w, r, &req) || len(req.Ops) == 0 {
 		writeError(w, http.StatusBadRequest, errors.New("body must be {\"version\", \"ops\": [...]}"))
 		return
 	}
@@ -365,6 +366,7 @@ func errorCode(err error) string {
 		{workspace.ErrRuleNotFound, "rule_not_found"},
 		{workspace.ErrLastRecipient, "last_recipient"},
 		{workspace.ErrKeyGroups, "key_groups"},
+		{workspace.ErrInvalidRegex, "invalid_regex"},
 	} {
 		if errors.Is(err, c.err) {
 			return c.code
@@ -380,7 +382,8 @@ func statusFor(err error) int {
 		errors.Is(err, workspace.ErrNameTaken), errors.Is(err, workspace.ErrPersonExists):
 		return http.StatusConflict
 	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey),
-		errors.Is(err, workspace.ErrInvalidName), errors.Is(err, workspace.ErrInvalidRecipient):
+		errors.Is(err, workspace.ErrInvalidName), errors.Is(err, workspace.ErrInvalidRecipient),
+		errors.Is(err, workspace.ErrInvalidRegex):
 		return http.StatusBadRequest
 	}
 	return http.StatusUnprocessableEntity

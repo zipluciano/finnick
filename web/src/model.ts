@@ -116,17 +116,41 @@ export function newKeyPath(format: string, name: string): string[] {
 }
 
 /**
- * The creation rule SOPS would pick for path, as a preview: Go and JavaScript regular expressions
- * mostly agree, and the server has the final word. undefined means "cannot tell".
+ * The position of the rule SOPS would pick for path among rules, as a preview: Go and JavaScript regular
+ * expressions mostly agree, and the server has the final word. -1 means no rule matches, undefined
+ * means "cannot tell" (a regex JavaScript does not understand comes first).
  */
-export function ruleForPath(ws: Workspace, path: string): Rule | null | undefined {
-  for (const rule of ws.config?.rules ?? []) {
-    if (!rule.pathRegex) return rule;
+export function matchRule(rules: { pathRegex: string }[], path: string): number | undefined {
+  for (const [i, rule] of rules.entries()) {
+    if (!rule.pathRegex) return i;
     try {
-      if (new RegExp(rule.pathRegex).test(path)) return rule;
+      if (new RegExp(rule.pathRegex).test(path)) return i;
     } catch {
       return undefined;
     }
   }
-  return null;
+  return -1;
+}
+
+/** The creation rule SOPS would pick for path; null when none matches, undefined when it cannot tell. */
+export function ruleForPath(ws: Workspace, path: string): Rule | null | undefined {
+  const rules = ws.config?.rules ?? [];
+  const i = matchRule(rules, path);
+  return i === undefined ? undefined : i < 0 ? null : rules[i];
+}
+
+/** The age keys a rule can be given: everyone Finnick knows about, and your own key. */
+export function agePeople(ws: Workspace): Recipient[] {
+  const people: Recipient[] = members(ws).filter((m) => m.type === "age");
+  for (const id of ws.identity.recipients ?? []) {
+    if (!people.some((p) => p.id === id)) people.push({ type: "age", id });
+  }
+  return people;
+}
+
+/** Whether two lists name the same recipients. */
+export function sameRecipients(a: Recipient[], b: Recipient[]): boolean {
+  const ka = new Set(a.map(recipientKey));
+  const kb = new Set(b.map(recipientKey));
+  return ka.size === kb.size && [...ka].every((k) => kb.has(k));
 }
