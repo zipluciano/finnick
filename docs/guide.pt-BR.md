@@ -1,5 +1,6 @@
 <p align="center">
-  <img src="assets/finnick-header.svg" alt="Finnick" width="320">
+  <img src="assets/finnick-header.svg#gh-light-mode-only" alt="Finnick" width="320">
+  <img src="assets/finnick-header-dark.svg#gh-dark-mode-only" alt="Finnick" width="320">
 </p>
 
 # Guia: secrets com SOPS, age e Finnick
