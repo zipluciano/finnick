@@ -90,6 +90,7 @@ web/                   React + TypeScript UI, built with Vite and embedded via g
 web/src/design/        the design system: tokens.css, base.css, components.css
 web/src/i18n/          translations (en.ts is the source of truth; other locales are type-checked against it)
 docs/                  guide (en, pt-BR), architecture and roadmap
+docs/adr/              architecture decision records
 ```
 
 ## Translations
@@ -97,3 +98,13 @@ docs/                  guide (en, pt-BR), architecture and roadmap
 Add a locale by copying `web/src/i18n/es.ts`, translating every value, and registering it in
 `web/src/prefs.tsx` (`LOCALES`, `dictionaries`, `browserLocale`) and `internal/settings` (`Locales`). The
 TypeScript build fails if a key is missing. Keys ending in `_one`/`_other` are plural forms.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Design decisions are recorded in [docs/adr/](docs/adr/).
+Security issues: [SECURITY.md](SECURITY.md).
+
+## License
+
+[Apache License 2.0](LICENSE). Finnick is an independent project, not affiliated with the SOPS
+project or the CNCF.
