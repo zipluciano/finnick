@@ -1,0 +1,87 @@
+version: 2
+
+project_name: finnick
+
+before:
+  hooks:
+    - npm --prefix web ci
+    - npm --prefix web run build
+
+builds:
+  - id: finnick
+    main: ./cmd/finnick
+    binary: finnick
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: finnick
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Documentation
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 2
+    - title: Other changes
+      order: 999
+  filters:
+    exclude:
+      - '^chore\(deps\):'
+
+homebrew_casks:
+  - name: finnick
+    binaries: [finnick]
+    homepage: https://github.com/zipluciano/finnick
+    description: Local web UI for secrets kept with SOPS and age
+    license: Apache-2.0
+    directory: Casks
+    repository:
+      owner: zipluciano
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: finnick-release
+      email: 73149430+zipluciano@users.noreply.github.com
+    commit_msg_template: "feat: finnick {{ .Tag }}"
+    hooks:
+      post:
+        # The binaries are not signed or notarized by Apple: without this, macOS refuses to run them.
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/finnick"]
+          end
+
+release:
+  github:
+    owner: zipluciano
+    name: finnick
+  prerelease: auto
+  footer: |
+    **Install:** `brew install --cask zipluciano/tap/finnick`, or download the archive for your platform below and
+    put `finnick` on your `PATH`. Check the download against `checksums.txt`.
