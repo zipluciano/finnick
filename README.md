@@ -2,11 +2,14 @@
 
 A local UI for secrets kept with [SOPS](https://github.com/getsops/sops). No server, no account, no lock-in.
 Your secrets stay in git, encrypted with age (or KMS, PGP, Vault…), and Finnick gives you a friendly
-interface over them: browse projects and environments, reveal and copy values, see who can decrypt what,
+interface over them: browse your secret files, reveal and copy values, see who can decrypt what,
 and spot files that are out of sync with `.sops.yaml`.
 
 It runs inside a repository: the one with your code, a `.sops.yaml` and your encrypted files (for example
 `secrets/dev.env`, `secrets/prod.env`). Any layout and any SOPS format work.
+
+New to SOPS or age? The [step-by-step guide](docs/guide.md) ([Português](docs/guide.pt-BR.md)) goes from
+creating your key to CI, Docker and Finnick.
 
 > Status: early. Read-only for now (browse, reveal, access overview). Editing, people management and git sync
 > are next: see [docs/roadmap.md](docs/roadmap.md).
@@ -86,7 +89,7 @@ internal/server/       loopback HTTP server and JSON API
 web/                   React + TypeScript UI, built with Vite and embedded via go:embed
 web/src/design/        the design system: tokens.css, base.css, components.css
 web/src/i18n/          translations (en.ts is the source of truth; other locales are type-checked against it)
-docs/                  architecture and roadmap
+docs/                  guide (en, pt-BR), architecture and roadmap
 ```
 
 ## Translations
