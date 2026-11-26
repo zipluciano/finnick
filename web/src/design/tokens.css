@@ -1,0 +1,134 @@
+/*
+ * Finnick design tokens.
+ *
+ * Everything visual comes from these variables: components never use raw colors or sizes.
+ * Light and dark come from one set of light-dark() values: the OS decides unless
+ * <html data-theme="light|dark"> forces a side (set by the server from saved settings).
+ * No web fonts: the system stacks below load instantly and work offline.
+ */
+
+:root {
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --leading: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Spacing (4px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+  --border-width: 1px;
+
+  /* Layout */
+  --sidebar-width: 288px;
+  --topbar-height: 52px;
+  --content-max: 1080px;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Palette: neutral (slate-ish), accent (teal), and status hues */
+  --gray-0: #ffffff;
+  --gray-50: #f7f8fa;
+  --gray-100: #eef0f3;
+  --gray-200: #e1e4e9;
+  --gray-300: #cbd0d8;
+  --gray-400: #9aa2ae;
+  --gray-500: #6b7380;
+  --gray-600: #4d5562;
+  --gray-700: #363c46;
+  --gray-800: #23272e;
+  --gray-850: #1b1e24;
+  --gray-900: #14161a;
+  --gray-950: #0d0f12;
+
+  --teal-50: #edfaf7;
+  --teal-100: #ccf1e9;
+  --teal-400: #34c3a8;
+  --teal-500: #14a38a;
+  --teal-600: #0f8573;
+  --teal-700: #0f766e;
+  --teal-900: #0b3b36;
+
+  --amber-50: #fff8eb;
+  --amber-200: #f9d993;
+  --amber-500: #d68a00;
+  --amber-700: #8a5600;
+  --amber-900: #3d2a07;
+
+  --red-50: #fef1f1;
+  --red-200: #f6c1c1;
+  --red-500: #d93c3c;
+  --red-700: #a32323;
+  --red-900: #421414;
+
+  --blue-50: #eef4ff;
+  --blue-500: #3b72e8;
+  --blue-700: #2350b8;
+  --blue-900: #142a57;
+
+  /*
+   * Semantic colors. light-dark(<light>, <dark>) picks a side from color-scheme:
+   * the OS preference by default, or the user's choice through [data-theme].
+   */
+  color-scheme: light dark;
+  --bg: light-dark(var(--gray-50), var(--gray-950));
+  --bg-elevated: light-dark(var(--gray-0), var(--gray-900));
+  --bg-sunken: light-dark(var(--gray-100), var(--gray-850));
+  --bg-hover: light-dark(var(--gray-100), var(--gray-850));
+  --bg-active: light-dark(var(--teal-50), color-mix(in srgb, var(--teal-500) 14%, transparent));
+  --fg: light-dark(var(--gray-900), #e8eaee);
+  --fg-muted: light-dark(var(--gray-500), var(--gray-400));
+  --fg-subtle: light-dark(var(--gray-400), var(--gray-500));
+  --fg-on-accent: #ffffff;
+  --border: light-dark(var(--gray-200), var(--gray-800));
+  --border-strong: light-dark(var(--gray-300), var(--gray-700));
+  --accent: light-dark(var(--teal-700), var(--teal-500));
+  --accent-hover: light-dark(var(--teal-600), var(--teal-400));
+  --accent-fg: light-dark(var(--teal-700), var(--teal-400));
+  --focus-ring: light-dark(color-mix(in srgb, var(--teal-500) 45%, transparent), color-mix(in srgb, var(--teal-400) 45%, transparent));
+
+  --success-bg: light-dark(var(--teal-50), color-mix(in srgb, var(--teal-500) 12%, transparent));
+  --success-fg: light-dark(var(--teal-700), var(--teal-400));
+  --success-border: light-dark(var(--teal-100), color-mix(in srgb, var(--teal-500) 30%, transparent));
+  --warning-bg: light-dark(var(--amber-50), color-mix(in srgb, var(--amber-500) 12%, transparent));
+  --warning-fg: light-dark(var(--amber-700), var(--amber-200));
+  --warning-border: light-dark(var(--amber-200), color-mix(in srgb, var(--amber-500) 30%, transparent));
+  --danger-bg: light-dark(var(--red-50), color-mix(in srgb, var(--red-500) 12%, transparent));
+  --danger-fg: light-dark(var(--red-700), var(--red-200));
+  --danger-border: light-dark(var(--red-200), color-mix(in srgb, var(--red-500) 30%, transparent));
+  --info-bg: light-dark(var(--blue-50), color-mix(in srgb, var(--blue-500) 14%, transparent));
+  --info-fg: light-dark(var(--blue-700), #a9c4ff);
+
+  --shadow-sm: 0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.4));
+  --shadow-md: 0 4px 12px light-dark(rgb(16 24 40 / 0.08), rgb(0 0 0 / 0.5));
+}
+
+/* Explicit choice from the theme switcher; without data-theme the OS decides. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}

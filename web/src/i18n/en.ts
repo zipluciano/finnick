@@ -1,0 +1,120 @@
+// Source of truth for UI text. Other locales must define every key (enforced by their type).
+// {name} is a placeholder; keys ending in _one/_other are plural forms used with tp().
+export const en = {
+  "nav.people": "People & keys",
+  "nav.rules": "Rules",
+  "nav.secrets": "Secrets",
+  "nav.rescan": "Rescan workspace",
+  "nav.noFiles": "No encrypted files found.",
+  "nav.outOfSync": "out of sync with .sops.yaml",
+  "nav.filesOutOfSync_one": "{count} file out of sync",
+  "nav.filesOutOfSync_other": "{count} files out of sync",
+  "nav.canDecrypt": "can decrypt",
+  "nav.locked": "locked",
+
+  "identity.noKey": "No age key found",
+  "identity.yourKey": "Your key",
+  "identity.ageIdentity": "age identity",
+  "identity.notRecipient": "not a recipient here yet",
+
+  "settings.theme": "Theme",
+  "settings.theme.system": "System",
+  "settings.theme.light": "Light",
+  "settings.theme.dark": "Dark",
+  "settings.language": "Language",
+
+  "load.error": "Could not load the workspace",
+  "load.refreshFailed": "Refresh failed",
+
+  "empty.fileNotFound": "File not found",
+  "empty.noFiles": "No encrypted files yet",
+  "empty.noFilesHint": "Finnick scanned {root} and found no SOPS-encrypted files.",
+
+  "file.keys_one": "{count} key",
+  "file.keys_other": "{count} keys",
+  "file.rule": "rule #{n}",
+  "file.ruleTitle": "Creation rule that applies to this file",
+  "file.noRule": "no matching rule",
+  "file.canDecrypt": "you can decrypt",
+  "file.locked": "locked for you",
+  "file.modified": "modified {when} · sops {version}",
+
+  "drift.title": "Recipients are out of sync with .sops.yaml",
+  "drift.missing_one": "{names} is in the rule but cannot decrypt yet.",
+  "drift.missing_other": "{names} are in the rule but cannot decrypt yet.",
+  "drift.extra_one": "{names} can still decrypt but is no longer in the rule.",
+  "drift.extra_other": "{names} can still decrypt but are no longer in the rule.",
+  "drift.fix": "Re-encrypt the data key for the current rule from the workspace root:",
+  "drift.revokeWarning":
+    "Removing a recipient does not revoke what they already saw: anyone who could decrypt an earlier version still has it in git history. Rotate those secrets too.",
+
+  "tabs.secrets": "Secrets",
+  "tabs.access": "Access",
+
+  "secrets.notRecipientTitle": "You are not a recipient of this file",
+  "secrets.notRecipientBody":
+    "Key names are stored in clear text by SOPS, so you can see them. To read values, ask someone with access to add your public key to the matching rule in .sops.yaml and run updatekeys.",
+  "secrets.decryptError": "Could not decrypt",
+  "secrets.filter": "Filter keys",
+  "secrets.reveal": "Reveal values",
+  "secrets.hide": "Hide values",
+  "secrets.noMatch": "No keys match the filter",
+  "secrets.noKeys": "This file has no keys",
+  "secrets.key": "Key",
+  "secrets.value": "Value",
+  "secrets.empty": "(empty)",
+  "secrets.copy": "Copy {key}",
+  "secrets.autoHide": "Values hide automatically after 2 minutes.",
+
+  "access.shamirTitle": "This file uses {count} key groups (Shamir secret sharing)",
+  "access.shamirBody": "Decrypting needs keys from more than one group. Group-level details are not shown yet.",
+  "access.whoCanDecrypt": "Who can decrypt",
+  "access.matchesAll": "(matches everything)",
+  "access.recipient": "Recipient",
+  "access.type": "Type",
+  "access.key": "Key",
+  "access.status": "Status",
+  "access.footnote": "Access comes from the file's own metadata. Changing {config} only takes effect after {command} re-encrypts the data key.",
+  "access.granted": "has access",
+  "access.pending": "pending updatekeys",
+  "access.revoking": "removed from rule",
+
+  "common.you": "you",
+  "common.copy": "Copy",
+  "common.copyCommand": "Copy command",
+  "common.copyPublicKey": "Copy public key",
+
+  "people.title": "People & keys",
+  "people.subtitle": "Everyone who appears in {config} or in a file's metadata, and what each one can decrypt.",
+  "people.emptyTitle": "No recipients yet",
+  "people.emptyBody": "Add age public keys to {config} to give people access.",
+  "people.recipient": "Recipient",
+  "people.legendGranted": "can decrypt",
+  "people.legendPending": "in the rule, waiting for updatekeys",
+  "people.legendRevoking": "can decrypt, but no longer in the rule",
+
+  "rules.title": "Rules",
+  "rules.noConfigTitle": "No .sops.yaml found",
+  "rules.noConfigBody":
+    "Finnick looked in {root} and its parent directories. Without a config, files can still be listed and decrypted, but new files have no default recipients.",
+  "rules.subtitle": "{rules} from {path}. SOPS applies the {first} rule whose {regex} matches, so order matters.",
+  "rules.first": "first",
+  "rules.emptyTitle": "No creation rules",
+  "rules.emptyBody": "Without rules, every encrypt command needs explicit recipients.",
+  "rules.noRegex": "(no path_regex: matches every file)",
+  "rules.files_one": "{count} file",
+  "rules.files_other": "{count} files",
+  "rules.noRecipients": "No recipients.",
+  "rules.outOfSync": "out of sync",
+  "rules.unmatched_one": "{count} encrypted file matches no rule",
+  "rules.unmatched_other": "{count} encrypted files match no rule",
+  "rules.unmatchedBody": "They keep working, but updatekeys will fail on them until a rule covers their path.",
+
+  "errors.session_expired": "Session expired: open the URL printed by `finnick ui` again.",
+  "errors.not_recipient": "None of your keys is a recipient of this file.",
+  "errors.integrity": "Integrity check failed: the file was modified outside SOPS.",
+  "errors.invalid_path": "Invalid path.",
+} as const;
+
+export type MessageKey = keyof typeof en;
+export type Messages = Record<MessageKey, string>;

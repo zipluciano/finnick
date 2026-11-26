@@ -1,0 +1,4 @@
+/* Finnick design system: bundled into the binary, no CDN, no web fonts. */
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
