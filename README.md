@@ -1,8 +1,5 @@
 <h1 align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/finnick-header-dark.svg">
-    <img src="docs/assets/finnick-header.svg" alt="Finnick" width="480">
-  </picture>
+  <img src="docs/assets/finnick-header.svg" alt="Finnick" width="480">
 </h1>
 
 A local UI for secrets kept with [SOPS](https://github.com/getsops/sops). No server, no account, no lock-in.
