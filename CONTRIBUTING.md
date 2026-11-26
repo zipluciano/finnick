@@ -87,6 +87,28 @@ check, CSRF header, strict CSP, no clear text on disk. New endpoints need tests 
 The project keeps dependencies few, because it handles secrets. Explain in the pull request why a new
 dependency is needed and why the standard library or existing code is not enough.
 
+## Releasing (maintainers)
+
+Releases are cut from `main` by pushing a tag; `.github/workflows/release.yml` runs GoReleaser, which
+builds the UI and the binaries, publishes the GitHub release with the archives and `checksums.txt`, and
+updates the cask in [zipluciano/homebrew-tap](https://github.com/zipluciano/homebrew-tap).
+
+1. Make sure `main` is green and `docs/roadmap.md` is up to date.
+2. Try it locally with `make snapshot` and run the binary from `dist/`.
+3. Tag and push, using [semantic versioning](https://semver.org/):
+
+   ```sh
+   git switch main && git pull
+   git tag -a v0.1.0 -m "v0.1.0"
+   git push origin v0.1.0
+   ```
+
+The workflow pushes the cask with an SSH deploy key that has write access to the tap repository only:
+the private key is the `HOMEBREW_TAP_SSH_KEY` secret here, the public key is a deploy key of the tap. To
+replace it, generate a new key pair (`ssh-keygen -t ed25519`), add the public key to the tap with write
+access, update the secret and delete the old deploy key. Release notes come from the commit subjects, grouped by Conventional
+Commit type.
+
 ## AI-assisted contributions
 
 Using coding assistants is fine. In return, you are responsible for every line you submit: read it, run
