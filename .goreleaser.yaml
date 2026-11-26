@@ -38,6 +38,8 @@ checksum:
 changelog:
   use: github
   sort: asc
+  abbrev: 7
+  format: "{{ .Message }}{{ with .AuthorUsername }} by @{{ . }}{{ end }} ({{ .SHA }})"
   groups:
     - title: Features
       regexp: '^.*?feat(\(.+\))??!?:.+$'
@@ -53,6 +55,7 @@ changelog:
   filters:
     exclude:
       - '^chore\(deps\):'
+      - '^Merge '
 
 homebrew_casks:
   - name: finnick
