@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { api, ApiError, type Edit, type Entry, type Recipient, type Revealed, type SecretFile, type Workspace } from "../api";
 import { Icon, type IconName } from "../components/Icon";
 import { Banner, Command, CopyButton, Empty, RecipientRow } from "../components/ui";
-import { access, flat, isMe, recipientKey } from "../model";
+import { access, flat, isMe, newKeyPath, recipientKey } from "../model";
 import { usePrefs } from "../prefs";
 
 const AUTO_HIDE_MS = 2 * 60 * 1000;
@@ -289,7 +289,7 @@ function editKeys(onSave: () => void, onCancel: () => void) {
   };
 }
 
-function ValueField({ value, onChange, onKeyDown, label, autoFocus }: {
+export function ValueField({ value, onChange, onKeyDown, label, autoFocus }: {
   value: string;
   onChange: (v: string) => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
@@ -371,6 +371,11 @@ function EditRow({ entry, saving, onSave, onCancel }: {
   );
 }
 
+export function useKeyPlaceholder(format: string | null) {
+  const { t } = usePrefs();
+  return format === "dotenv" ? "NAME" : format === "ini" ? t("secrets.newKeyIni") : t("secrets.newKeyNested");
+}
+
 function AddRow({ format, saving, onSave, onCancel }: {
   format: string;
   saving: boolean;
@@ -380,9 +385,8 @@ function AddRow({ format, saving, onSave, onCancel }: {
   const { t } = usePrefs();
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
-  // Nested formats address a key the way the table shows it: parent.child.
-  const path = format === "dotenv" ? [name.trim()] : name.trim().split(".");
-  const placeholder = format === "dotenv" ? "NAME" : format === "ini" ? t("secrets.newKeyIni") : t("secrets.newKeyNested");
+  const path = newKeyPath(format, name);
+  const placeholder = useKeyPlaceholder(format);
   const submit = () => {
     if (name.trim()) onSave([{ op: "add", path, value }]);
   };

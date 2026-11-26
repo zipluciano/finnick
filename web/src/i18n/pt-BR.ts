@@ -11,6 +11,7 @@ export const ptBR: Messages = {
   "nav.filesOutOfSync_other": "{count} arquivos fora de sincronia",
   "nav.canDecrypt": "pode decifrar",
   "nav.locked": "bloqueado",
+  "nav.newFile": "Novo arquivo",
 
   "identity.noKey": "Nenhuma chave age encontrada",
   "identity.yourKey": "Sua chave",
@@ -79,6 +80,18 @@ export const ptBR: Messages = {
   "secrets.editHint": "Salvar criptografa o arquivo de novo com a mesma chave de dados, como o sops edit. Faça commit para compartilhar a mudança.",
   "secrets.readOnly": "Este arquivo só pode ser lido aqui: altere-o com sops edit.",
 
+  "newFile.title": "Novo arquivo de secrets",
+  "newFile.subtitle": "O Finnick cifra o arquivo para os destinatários da regra do {config} que casa com o caminho, como o {command}.",
+  "newFile.path": "Caminho",
+  "newFile.pathHint": "Relativo a {root}. A extensão define o formato: .env, .yaml, .json ou .ini.",
+  "newFile.badFormat": "Use um nome terminado em .env, .yaml, .yml, .json ou .ini.",
+  "newFile.exists": "Já existe um arquivo neste caminho. Abrir",
+  "newFile.noRule": "Nenhuma regra do .sops.yaml casa com este caminho, então ninguém conseguiria decifrar o arquivo.",
+  "newFile.firstKey": "Primeira chave",
+  "newFile.create": "Criar arquivo",
+  "newFile.createError": "Não foi possível criar o arquivo",
+  "newFile.noConfig": "Arquivos novos recebem os destinatários das creation rules do .sops.yaml. Crie uma antes.",
+
   "access.shamirTitle": "Este arquivo usa {count} grupos de chaves (Shamir secret sharing)",
   "access.shamirBody": "Decifrar exige chaves de mais de um grupo. Os detalhes por grupo ainda não são exibidos.",
   "access.whoCanDecrypt": "Quem pode decifrar",
@@ -133,4 +146,6 @@ export const ptBR: Messages = {
   "errors.key_exists": "Já existe uma chave com esse nome.",
   "errors.key_not_found": "Essa chave não está mais no arquivo.",
   "errors.invalid_key": "Nome de chave inválido. Não pode ser vazio, nomes de .env não têm espaços nem '=', chaves de .ini são secao.nome e sops é reservado.",
+  "errors.no_rule": "Nenhuma creation rule do .sops.yaml casa com este caminho.",
+  "errors.file_exists": "Já existe um arquivo neste caminho.",
 };

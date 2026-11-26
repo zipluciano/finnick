@@ -26,7 +26,7 @@ This document describes the current design. The reasons behind each choice are i
    internal/server ─ loopback HTTP, auth token, host check, CSRF header, CSP
                    │
                    ▼
- internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt) · Edit
+ internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt) · Edit · Create
                    │
                    ▼
    getsops/sops/v3 ─ stores (dotenv/yaml/json/ini/binary), key sources (age, KMS, …), AES-GCM

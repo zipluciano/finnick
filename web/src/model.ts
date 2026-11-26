@@ -1,4 +1,4 @@
-import type { Recipient, SecretFile, Workspace } from "./api";
+import type { Recipient, Rule, SecretFile, Workspace } from "./api";
 
 export const recipientKey = (r: Recipient) => `${r.type}\u0000${r.id}`;
 
@@ -77,4 +77,34 @@ export function access(ws: Workspace, f: SecretFile, r: Recipient): AccessState 
 
 export function isMe(ws: Workspace, r: Recipient): boolean {
   return r.type === "age" && (ws.identity.recipients ?? []).includes(r.id);
+}
+
+/** The SOPS format a path gets from its extension, or null for formats Finnick does not create. */
+export function formatForPath(path: string): string | null {
+  if (/\.ya?ml$/.test(path)) return "yaml";
+  if (/\.json$/.test(path)) return "json";
+  if (/\.env$/.test(path)) return "dotenv";
+  if (/\.ini$/.test(path)) return "ini";
+  return null;
+}
+
+/** The path of a new key typed by a person: nested formats use parent.name, as the table shows keys. */
+export function newKeyPath(format: string, name: string): string[] {
+  return format === "dotenv" ? [name.trim()] : name.trim().split(".");
+}
+
+/**
+ * The creation rule SOPS would pick for path, as a preview: Go and JavaScript regular expressions
+ * mostly agree, and the server has the final word. undefined means "cannot tell".
+ */
+export function ruleForPath(ws: Workspace, path: string): Rule | null | undefined {
+  for (const rule of ws.config?.rules ?? []) {
+    if (!rule.pathRegex) return rule;
+    try {
+      if (new RegExp(rule.pathRegex).test(path)) return rule;
+    } catch {
+      return undefined;
+    }
+  }
+  return null;
 }

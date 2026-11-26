@@ -6,16 +6,23 @@ import { Banner, Empty } from "./components/ui";
 import { basename, groupByDir, members, rootName } from "./model";
 import { usePrefs } from "./prefs";
 import { FileView } from "./views/FileView";
+import { NewFileView } from "./views/NewFileView";
 import { PeopleView } from "./views/PeopleView";
 import { RulesView } from "./views/RulesView";
 
-type Route = { view: "file"; path: string } | { view: "people" } | { view: "rules" } | { view: "home" };
+type Route =
+  | { view: "file"; path: string }
+  | { view: "people" }
+  | { view: "rules" }
+  | { view: "new" }
+  | { view: "home" };
 
 function parseRoute(hash: string): Route {
   const [, view, ...rest] = hash.replace(/^#/, "").split("/");
   if (view === "file" && rest.length) return { view: "file", path: decodeURIComponent(rest.join("/")) };
   if (view === "people") return { view: "people" };
   if (view === "rules") return { view: "rules" };
+  if (view === "new") return { view: "new" };
   return { view: "home" };
 }
 
@@ -36,7 +43,7 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const route = useRoute();
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       setWs(await api.workspace());
@@ -83,10 +90,11 @@ export function App() {
   );
 }
 
-function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChanged: () => void }) {
+function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChanged: () => Promise<void> }) {
   const { t, tn } = usePrefs();
   if (route.view === "people") return <PeopleView ws={ws} />;
   if (route.view === "rules") return <RulesView ws={ws} />;
+  if (route.view === "new") return <NewFileView ws={ws} onCreated={onChanged} />;
   const path = route.view === "file" ? route.path : ws.files[0]?.path;
   const file = ws.files.find((f) => f.path === path);
   if (file) return <FileView key={file.path} ws={ws} file={file} onChanged={onChanged} />;
@@ -101,6 +109,13 @@ function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChan
     <div className="page">
       <Empty icon="file" title={title}>
         {hint}
+        {route.view !== "file" && ws.config && (
+          <p>
+            <a className="btn" href="#/new">
+              <Icon name="plus" size={14} /> {t("nav.newFile")}
+            </a>
+          </p>
+        )}
       </Empty>
     </div>
   );
@@ -159,7 +174,20 @@ function Sidebar({
         </div>
 
         <div className="nav-section">
-          <div className="nav-section__title">{t("nav.secrets")}</div>
+          <div className="nav-section__title row row--between">
+            <span>{t("nav.secrets")}</span>
+            {ws.config && (
+              <a
+                className="btn btn--ghost btn--icon btn--tiny"
+                href="#/new"
+                title={t("nav.newFile")}
+                aria-label={t("nav.newFile")}
+                aria-current={route.view === "new" ? "page" : undefined}
+              >
+                <Icon name="plus" size={14} />
+              </a>
+            )}
+          </div>
           {groupByDir(ws.files).map(({ dir, files }) => (
             <div key={dir}>
               {dir && (

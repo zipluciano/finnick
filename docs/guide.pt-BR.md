@@ -123,7 +123,8 @@ creation_rules:
 
 ## 4. Crie os arquivos de secrets
 
-**Arquivo novo:** o sops abre o seu editor com um exemplo. Troque pelo conteúdo real, salve e feche; o arquivo
+**Arquivo novo:** no Finnick, use o **+** ao lado de *Secrets* ([passo 6](#6-use-o-finnick)). Com o sops, ele
+abre o seu editor com um exemplo. Troque pelo conteúdo real, salve e feche; o arquivo
 é gravado já cifrado.
 
 ```bash
@@ -206,6 +207,9 @@ O que você encontra na interface:
   cifra o arquivo de novo com a mesma chave de dados, exatamente como o `sops edit`; depois, faça commit. Se o
   arquivo mudou no disco nesse meio-tempo (um `git pull`, outro editor), o Finnick não sobrescreve e recarrega
   os valores para você refazer a alteração.
+- **Novo arquivo:** o **+** ao lado de *Secrets* cria um arquivo cifrado. Informe o caminho (a extensão
+  define o formato) e uma primeira chave; o Finnick mostra qual regra se aplica e quem vai conseguir decifrar,
+  e cifra para essas pessoas, como o `sops encrypt`.
 - **Aba Acesso:** quem consegue decifrar o arquivo, lido do próprio arquivo e não só do `.sops.yaml`.
   - **tem acesso**: está no arquivo e na regra.
   - **aguardando updatekeys**: está na regra, mas o arquivo ainda não foi cifrado de novo para essa pessoa.
