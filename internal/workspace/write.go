@@ -15,6 +15,8 @@ import (
 	"github.com/getsops/sops/v3/cmd/sops/common"
 	"github.com/getsops/sops/v3/cmd/sops/formats"
 	sopsconfig "github.com/getsops/sops/v3/config"
+	"github.com/getsops/sops/v3/keyservice"
+	"github.com/getsops/sops/v3/version"
 )
 
 // Errors for writes the UI can recognize (and translate) by code.
@@ -24,6 +26,8 @@ var (
 	ErrKeyExists   = errors.New("a key with that name already exists")
 	ErrKeyNotFound = errors.New("key not found")
 	ErrInvalidKey  = errors.New("invalid key name")
+	ErrNoRule      = errors.New("no creation rule in .sops.yaml matches this path")
+	ErrFileExists  = errors.New("a file already exists at this path")
 )
 
 // Version identifies the exact bytes of a file, so a write can refuse to overwrite changes it has not seen.
@@ -87,18 +91,111 @@ func (ws *Workspace) open(rel, path string) (*opened, error) {
 	return &opened{path: path, format: format, store: store, data: data, tree: tree, dataKey: key}, nil
 }
 
+// encrypt encrypts the tree with its data key (new lastmodified and MAC) and returns the file's bytes
+// and its entries.
+func (o *opened) encrypt() ([]byte, []Entry, error) {
+	entries := entriesOf(o.tree.Branches)
+	if err := common.EncryptTree(common.EncryptTreeOpts{Tree: &o.tree, Cipher: aes.NewCipher(), DataKey: o.dataKey}); err != nil {
+		return nil, nil, err
+	}
+	out, err := o.store.EmitEncryptedFile(o.tree)
+	return out, entries, err
+}
+
 // save encrypts the tree again with its data key, as `sops edit` does, and replaces the file on disk.
 // It returns the new version and the entries of the saved file.
 func (o *opened) save() (string, []Entry, error) {
-	entries := entriesOf(o.tree.Branches)
-	if err := common.EncryptTree(common.EncryptTreeOpts{Tree: &o.tree, Cipher: aes.NewCipher(), DataKey: o.dataKey}); err != nil {
-		return "", nil, err
-	}
-	out, err := o.store.EmitEncryptedFile(o.tree)
+	out, entries, err := o.encrypt()
 	if err != nil {
 		return "", nil, err
 	}
 	if err := replaceFile(o.path, out); err != nil {
+		return "", nil, err
+	}
+	return Version(out), entries, nil
+}
+
+// Create makes a new encrypted file at rel with the keys added by edits (all of them "add"). Its
+// recipients and encryption settings come from the creation rule that matches the path, as with
+// `sops encrypt`; without a matching rule nothing is written and ErrNoRule is returned.
+func (ws *Workspace) Create(rel string, edits []Edit) (string, []Entry, error) {
+	path, err := ws.resolveWrite(rel)
+	if err != nil {
+		return "", nil, err
+	}
+	if _, err := os.Lstat(path); err == nil {
+		return "", nil, ErrFileExists
+	}
+	format := formats.FormatForPath(path)
+	if format == formats.Binary {
+		return "", nil, fmt.Errorf("%w: new files must end in .env, .yaml, .yml, .json or .ini", ErrUnsupported)
+	}
+	if ws.Config == nil {
+		return "", nil, ErrNoRule
+	}
+	rule, err := sopsconfig.LoadCreationRuleForFile(ws.Config.Path, path, map[string]*string{})
+	if err != nil || rule == nil || len(rule.KeyGroups) == 0 {
+		return "", nil, ErrNoRule
+	}
+	doc := sops.TreeBranch{}
+	for _, e := range edits {
+		if e.Op != "add" {
+			return "", nil, fmt.Errorf("a new file only takes \"add\" edits, got %q", e.Op)
+		}
+		if doc, err = applyEdit(doc, format, e); err != nil {
+			return "", nil, err
+		}
+	}
+	if len(doc) == 0 {
+		return "", nil, fmt.Errorf("%w: add at least one key", ErrInvalidKey)
+	}
+	tree := sops.Tree{
+		Branches: sops.TreeBranches{doc},
+		FilePath: path,
+		Metadata: sops.Metadata{
+			KeyGroups:               rule.KeyGroups,
+			ShamirThreshold:         rule.ShamirThreshold,
+			UnencryptedSuffix:       rule.UnencryptedSuffix,
+			EncryptedSuffix:         rule.EncryptedSuffix,
+			UnencryptedRegex:        rule.UnencryptedRegex,
+			EncryptedRegex:          rule.EncryptedRegex,
+			UnencryptedCommentRegex: rule.UnencryptedCommentRegex,
+			EncryptedCommentRegex:   rule.EncryptedCommentRegex,
+			MACOnlyEncrypted:        rule.MACOnlyEncrypted,
+			Version:                 version.Version,
+		},
+	}
+	key, errs := tree.GenerateDataKeyWithKeyServices([]keyservice.KeyServiceClient{keyservice.NewLocalClient()})
+	if len(errs) > 0 {
+		return "", nil, fmt.Errorf("could not encrypt the data key for every recipient: %v", errs)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return "", nil, err
+	}
+	o := &opened{path: path, format: format, store: common.StoreForFormat(format, ws.stores()), tree: tree, dataKey: key}
+	return o.saveNew()
+}
+
+// saveNew is save for a file that must not exist yet: it fails instead of replacing one created meanwhile.
+func (o *opened) saveNew() (string, []Entry, error) {
+	out, entries, err := o.encrypt()
+	if err != nil {
+		return "", nil, err
+	}
+	f, err := os.OpenFile(o.path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return "", nil, ErrFileExists
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	if _, err := f.Write(out); err != nil {
+		f.Close()
+		os.Remove(o.path)
+		return "", nil, err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(o.path)
 		return "", nil, err
 	}
 	return Version(out), entries, nil

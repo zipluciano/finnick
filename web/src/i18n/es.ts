@@ -11,6 +11,7 @@ export const es: Messages = {
   "nav.filesOutOfSync_other": "{count} archivos desincronizados",
   "nav.canDecrypt": "puede descifrar",
   "nav.locked": "bloqueado",
+  "nav.newFile": "Nuevo archivo",
 
   "identity.noKey": "No se encontró ninguna clave age",
   "identity.yourKey": "Tu clave",
@@ -79,6 +80,18 @@ export const es: Messages = {
   "secrets.editHint": "Guardar vuelve a cifrar el archivo con su clave de datos, como sops edit. Haz commit para compartir el cambio.",
   "secrets.readOnly": "Este archivo solo se puede leer aquí: cámbialo con sops edit.",
 
+  "newFile.title": "Nuevo archivo de secrets",
+  "newFile.subtitle": "Finnick lo cifra para los destinatarios de la regla de {config} que coincide con la ruta, como {command}.",
+  "newFile.path": "Ruta",
+  "newFile.pathHint": "Relativa a {root}. La extensión define el formato: .env, .yaml, .json o .ini.",
+  "newFile.badFormat": "Usa un nombre que termine en .env, .yaml, .yml, .json o .ini.",
+  "newFile.exists": "Ya existe un archivo en esta ruta. Abrirlo",
+  "newFile.noRule": "Ninguna regla de .sops.yaml coincide con esta ruta, así que nadie podría descifrar el archivo.",
+  "newFile.firstKey": "Primera clave",
+  "newFile.create": "Crear archivo",
+  "newFile.createError": "No se pudo crear el archivo",
+  "newFile.noConfig": "Los archivos nuevos toman los destinatarios de las creation rules de .sops.yaml. Crea una primero.",
+
   "access.shamirTitle": "Este archivo usa {count} grupos de claves (Shamir secret sharing)",
   "access.shamirBody": "Para descifrar se necesitan claves de más de un grupo. Los detalles por grupo todavía no se muestran.",
   "access.whoCanDecrypt": "Quién puede descifrar",
@@ -133,4 +146,6 @@ export const es: Messages = {
   "errors.key_exists": "Ya existe una clave con ese nombre.",
   "errors.key_not_found": "Esa clave ya no está en el archivo.",
   "errors.invalid_key": "Nombre de clave inválido. No puede estar vacío, los nombres de .env no tienen espacios ni '=', las claves de .ini son seccion.nombre y sops está reservado.",
+  "errors.no_rule": "Ninguna creation rule de .sops.yaml coincide con esta ruta.",
+  "errors.file_exists": "Ya existe un archivo en esta ruta.",
 };

@@ -122,7 +122,8 @@ creation_rules:
 
 ## 4. Create the secret files
 
-**New file:** sops opens your editor with an example. Replace it with the real content, save and close; the
+**New file:** in Finnick, use the **+** next to *Secrets* ([step 6](#6-use-finnick)). With sops, it opens your
+editor with an example. Replace it with the real content, save and close; the
 file is written already encrypted.
 
 ```bash
@@ -205,6 +206,9 @@ What you will find:
   file again with its data key, exactly like `sops edit`; commit the change afterwards. If the file changed
   on disk in the meantime (a `git pull`, another editor), Finnick refuses to overwrite it and reloads the
   values so you can redo the change.
+- **New file:** the **+** next to *Secrets* creates an encrypted file. Type its path (the extension sets the
+  format) and a first key; Finnick shows which rule applies and who will be able to decrypt it, and encrypts
+  it for them, like `sops encrypt`.
 - **Access tab:** who can decrypt the file, read from the file itself, not only from `.sops.yaml`.
   - **has access**: in the file and in the rule.
   - **pending updatekeys**: in the rule, but the file was not re-encrypted for that person yet.

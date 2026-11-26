@@ -11,6 +11,7 @@ export const en = {
   "nav.filesOutOfSync_other": "{count} files out of sync",
   "nav.canDecrypt": "can decrypt",
   "nav.locked": "locked",
+  "nav.newFile": "New file",
 
   "identity.noKey": "No age key found",
   "identity.yourKey": "Your key",
@@ -79,6 +80,18 @@ export const en = {
   "secrets.editHint": "Saving encrypts the file again with its data key, like sops edit. Commit the change to share it.",
   "secrets.readOnly": "This file can only be read here: change it with sops edit.",
 
+  "newFile.title": "New secret file",
+  "newFile.subtitle": "Finnick encrypts it for the recipients of the {config} rule that matches its path, like {command}.",
+  "newFile.path": "Path",
+  "newFile.pathHint": "Relative to {root}. The extension sets the format: .env, .yaml, .json or .ini.",
+  "newFile.badFormat": "Use a name ending in .env, .yaml, .yml, .json or .ini.",
+  "newFile.exists": "A file already exists at this path. Open it",
+  "newFile.noRule": "No rule in .sops.yaml matches this path, so nobody would be able to decrypt the file.",
+  "newFile.firstKey": "First key",
+  "newFile.create": "Create file",
+  "newFile.createError": "Could not create the file",
+  "newFile.noConfig": "New files get their recipients from the creation rules in .sops.yaml. Add one first.",
+
   "access.shamirTitle": "This file uses {count} key groups (Shamir secret sharing)",
   "access.shamirBody": "Decrypting needs keys from more than one group. Group-level details are not shown yet.",
   "access.whoCanDecrypt": "Who can decrypt",
@@ -132,6 +145,8 @@ export const en = {
   "errors.key_exists": "A key with that name already exists.",
   "errors.key_not_found": "That key is no longer in the file.",
   "errors.invalid_key": "Invalid key name. It cannot be empty, .env names have no spaces or '=', .ini keys are section.name, and sops is reserved.",
+  "errors.no_rule": "No creation rule in .sops.yaml matches this path.",
+  "errors.file_exists": "A file already exists at this path.",
 } as const;
 
 export type MessageKey = keyof typeof en;

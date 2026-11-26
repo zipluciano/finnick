@@ -64,6 +64,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/workspace", s.authed(http.HandlerFunc(s.handleWorkspace)))
 	mux.Handle("POST /api/reveal", s.authed(s.csrf(http.HandlerFunc(s.handleReveal))))
 	mux.Handle("POST /api/edit", s.authed(s.csrf(http.HandlerFunc(s.handleEdit))))
+	mux.Handle("POST /api/create", s.authed(s.csrf(http.HandlerFunc(s.handleCreate))))
 	mux.Handle("GET /api/settings", s.authed(http.HandlerFunc(s.handleGetSettings)))
 	mux.Handle("PUT /api/settings", s.authed(s.csrf(http.HandlerFunc(s.handlePutSettings))))
 	mux.Handle("GET /", s.authed(http.HandlerFunc(s.handleUI)))
@@ -194,6 +195,23 @@ func (s *Server) handleEdit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"path": req.Path, "entries": entries, "version": version, "editable": true})
 }
 
+func (s *Server) handleCreate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path  string           `json:"path"`
+		Edits []workspace.Edit `json:"edits"`
+	}
+	if !readJSON(w, r, &req) || req.Path == "" || len(req.Edits) == 0 {
+		writeError(w, http.StatusBadRequest, errors.New("body must be {\"path\", \"edits\": [...]}"))
+		return
+	}
+	version, entries, err := s.ws.Create(req.Path, req.Edits)
+	if err != nil {
+		writeError(w, statusFor(err), err)
+		return
+	}
+	writeJSON(w, map[string]any{"path": req.Path, "entries": entries, "version": version, "editable": true})
+}
+
 // readJSON decodes a small request body. Bodies are capped: none of the API needs more.
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	return json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(v) == nil
@@ -276,6 +294,8 @@ func errorCode(err error) string {
 		{workspace.ErrKeyExists, "key_exists"},
 		{workspace.ErrKeyNotFound, "key_not_found"},
 		{workspace.ErrInvalidKey, "invalid_key"},
+		{workspace.ErrNoRule, "no_rule"},
+		{workspace.ErrFileExists, "file_exists"},
 	} {
 		if errors.Is(err, c.err) {
 			return c.code
@@ -287,7 +307,7 @@ func errorCode(err error) string {
 // statusFor maps workspace errors to HTTP statuses.
 func statusFor(err error) int {
 	switch {
-	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists):
+	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists), errors.Is(err, workspace.ErrFileExists):
 		return http.StatusConflict
 	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey):
 		return http.StatusBadRequest

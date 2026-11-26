@@ -149,3 +149,65 @@ func TestEditNeedsAccessAndAValidPath(t *testing.T) {
 		t.Errorf("bob editing prod: got %v, want ErrNotRecipient", err)
 	}
 }
+
+func TestCreate(t *testing.T) {
+	dir, _, bob := newRepo(t)
+	ws, _ := Open(dir)
+	version, entries, err := ws.Create("secrets/staging.env", []Edit{
+		{Op: "add", Path: []any{"API_URL"}, Value: "https://staging"},
+		{Op: "add", Path: []any{"TOKEN"}, Value: "s3cret"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 || len(version) != 64 {
+		t.Fatalf("entries %+v version %q", entries, version)
+	}
+	if got := sopsDecrypt(t, dir, "secrets/staging.env"); got != "API_URL=https://staging\nTOKEN=s3cret\n" {
+		t.Errorf("sops decrypt:\n%s", got)
+	}
+	// Recipients come from the matching rule (the catch-all one: alice and bob).
+	files, _ := ws.Scan(Identity{})
+	for _, f := range files {
+		if f.Path == "secrets/staging.env" && (f.Rule != 1 || f.Drift != nil || len(f.KeyGroups[0]) != 2) {
+			t.Errorf("new file %+v", f)
+		}
+	}
+	t.Setenv("SOPS_AGE_KEY", bob.String())
+	if _, err := ws.Reveal("secrets/staging.env"); err != nil {
+		t.Errorf("bob is in the rule and should decrypt the new file: %v", err)
+	}
+
+	// Nested keys in a new YAML file, in a directory that does not exist yet.
+	if _, _, err := ws.Create("config/app.yaml", []Edit{{Op: "add", Path: []any{"db", "url"}, Value: "postgres://x"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := sopsDecrypt(t, dir, "config/app.yaml"); got != "db:\n    url: postgres://x\n" {
+		t.Errorf("sops decrypt:\n%s", got)
+	}
+}
+
+func TestCreateRefusals(t *testing.T) {
+	dir, _, _ := newRepo(t)
+	ws, _ := Open(dir)
+	add := []Edit{{Op: "add", Path: []any{"A"}, Value: "1"}}
+	cases := map[string]error{
+		"secrets/dev.yaml": ErrFileExists,
+		"secrets/key.pem":  ErrUnsupported,
+		"../outside.env":   ErrInvalidPath,
+		".sops.yaml":       ErrInvalidPath,
+	}
+	for rel, want := range cases {
+		if _, _, err := ws.Create(rel, add); !errors.Is(err, want) {
+			t.Errorf("%s: got %v, want %v", rel, err, want)
+		}
+	}
+	if _, _, err := ws.Create("secrets/empty.env", nil); !errors.Is(err, ErrInvalidKey) {
+		t.Errorf("a file without keys: got %v", err)
+	}
+	write(t, dir, ".sops.yaml", "creation_rules:\n  - path_regex: ^only/.*\n    age: age1qqqq\n")
+	ws, _ = Open(dir)
+	if _, _, err := ws.Create("secrets/new.env", add); !errors.Is(err, ErrNoRule) {
+		t.Errorf("no matching rule: got %v", err)
+	}
+}

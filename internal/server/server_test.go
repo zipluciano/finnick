@@ -87,6 +87,13 @@ func TestAuthFlow(t *testing.T) {
 	if w.Code != http.StatusBadRequest { // the body has no version or edits
 		t.Fatalf("edit with an incomplete body: %d %s", w.Code, w.Body)
 	}
+	if w := do(h, "POST", "/api/create", host, withCookie); w.Code != http.StatusForbidden {
+		t.Fatalf("create without csrf header: %d", w.Code)
+	}
+	w = do(h, "POST", "/api/create", host, func(r *http.Request) { withCookie(r); r.Header.Set(csrfHeader, "1") })
+	if w.Code != http.StatusBadRequest { // no edits
+		t.Fatalf("create with an incomplete body: %d %s", w.Code, w.Body)
+	}
 	if w := do(h, "GET", "/api/edit", host, withCookie); w.Code == http.StatusOK {
 		t.Fatalf("edit over GET: %d", w.Code)
 	}
