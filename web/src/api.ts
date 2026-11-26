@@ -74,6 +74,10 @@ export const api = {
   workspace: () => call<Workspace>("/api/workspace"),
   reveal: (path: string) =>
     call<Revealed>("/api/reveal", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path }) }),
+  updateKeys: (path: string) =>
+    call<{ path: string; changed: boolean }>("/api/updatekeys", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path }) }),
+  rotate: (path: string) =>
+    call<{ path: string; version: string }>("/api/rotate", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path }) }),
   create: (path: string, edits: Edit[]) =>
     call<Revealed>("/api/create", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path, edits }) }),
   edit: (path: string, version: string, edits: Edit[]) =>

@@ -240,19 +240,21 @@ hit rescan (↻). People management and git from the UI are on the [roadmap](roa
    ```
 3. Open Finnick: under **People & keys**, caio shows as **pending updatekeys**. Changing `.sops.yaml` alone
    gives nobody access.
-4. Re-encrypt the files for the current keys (you must be able to decrypt them yourself):
+4. Re-encrypt the files for the current keys (you must be able to decrypt them yourself): in Finnick, use
+   **Update keys** on the file, or **Update keys in N files** under **Rules**. From the terminal:
    ```bash
    sops updatekeys -y secrets/*.env
    ```
-5. Rescan in Finnick: all green. Commit and push; after `git pull` the person can decrypt.
+5. Finnick shows everyone green. Commit and push; after `git pull` the person can decrypt.
 
 ## 8. Remove someone's access
 
 1. Remove the key from `keys` and from the rules.
-2. Run `sops updatekeys -y secrets/*.env`. Until then, Finnick shows the person as **removed from rule**.
+2. Update keys as in [step 7](#7-give-someone-access). Until then, Finnick shows the person as **removed from
+   rule**.
 3. **Important:** the person can still decrypt the old versions in git history. To really protect the secrets,
-   **change the values** at the provider (passwords, tokens, API keys), store the new ones with `sops edit`,
-   and generate a new data key:
+   **change the values** at the provider (passwords, tokens, API keys), store the new ones (in Finnick or with
+   `sops edit`), and generate a new data key: **Rotate data key** in the file's Access tab, or
    ```bash
    sops rotate -i secrets/prod.env
    ```

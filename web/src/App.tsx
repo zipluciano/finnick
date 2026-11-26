@@ -93,7 +93,7 @@ export function App() {
 function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChanged: () => Promise<void> }) {
   const { t, tn } = usePrefs();
   if (route.view === "people") return <PeopleView ws={ws} />;
-  if (route.view === "rules") return <RulesView ws={ws} />;
+  if (route.view === "rules") return <RulesView ws={ws} onChanged={onChanged} />;
   if (route.view === "new") return <NewFileView ws={ws} onCreated={onChanged} />;
   const path = route.view === "file" ? route.path : ws.files[0]?.path;
   const file = ws.files.find((f) => f.path === path);

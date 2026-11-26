@@ -211,3 +211,93 @@ func TestCreateRefusals(t *testing.T) {
 		t.Errorf("no matching rule: got %v", err)
 	}
 }
+
+func dataKey(t *testing.T, dir, rel string) string {
+	t.Helper()
+	data, _ := os.ReadFile(filepath.Join(dir, rel))
+	tree, err := loadTree(filepath.Join(dir, rel), data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := tree.Metadata.GetDataKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(key)
+}
+
+func TestUpdateKeys(t *testing.T) {
+	dir, alice, bob := newRepo(t)
+	// Give bob prod and take him out of everything else, without touching the files.
+	write(t, dir, ".sops.yaml", `
+keys:
+  - &alice `+alice.Recipient().String()+`
+  - &bob `+bob.Recipient().String()+`
+creation_rules:
+  - path_regex: secrets/prod\..*
+    age: [*alice, *bob]
+  - age: *alice
+`)
+	ws, _ := Open(dir)
+	keyBefore := dataKey(t, dir, "secrets/prod.env")
+	for _, rel := range []string{"secrets/prod.env", "secrets/dev.yaml"} {
+		changed, err := ws.UpdateKeys(rel)
+		if err != nil || !changed {
+			t.Fatalf("%s: changed=%v err=%v", rel, changed, err)
+		}
+	}
+	if changed, err := ws.UpdateKeys("secrets/prod.env"); err != nil || changed {
+		t.Errorf("a file in sync must be left alone: changed=%v err=%v", changed, err)
+	}
+	files, _ := ws.Scan(Identity{})
+	for _, f := range files {
+		if f.Drift != nil {
+			t.Errorf("%s still drifts: %+v", f.Path, f.Drift)
+		}
+	}
+	if dataKey(t, dir, "secrets/prod.env") != keyBefore {
+		t.Error("updatekeys must keep the data key")
+	}
+	sopsDecrypt(t, dir, "secrets/prod.env")
+
+	t.Setenv("SOPS_AGE_KEY", bob.String())
+	if _, err := ws.Reveal("secrets/prod.env"); err != nil {
+		t.Errorf("bob was added to prod: %v", err)
+	}
+	if _, err := ws.Reveal("secrets/dev.yaml"); !errors.Is(err, ErrNotRecipient) {
+		t.Errorf("bob was removed from dev: %v", err)
+	}
+	if _, err := ws.UpdateKeys("secrets/dev.yaml"); err != nil {
+		t.Errorf("in sync, so no key is needed: %v", err)
+	}
+}
+
+func TestUpdateKeysNeedsAccess(t *testing.T) {
+	dir, alice, bob := newRepo(t)
+	write(t, dir, ".sops.yaml", "creation_rules:\n  - age: "+alice.Recipient().String()+","+bob.Recipient().String()+"\n")
+	t.Setenv("SOPS_AGE_KEY", bob.String()) // bob cannot read prod, so he cannot share it
+	ws, _ := Open(dir)
+	if _, err := ws.UpdateKeys("secrets/prod.env"); !errors.Is(err, ErrNotRecipient) {
+		t.Fatalf("got %v, want ErrNotRecipient", err)
+	}
+}
+
+func TestRotate(t *testing.T) {
+	dir, _, _ := newRepo(t)
+	ws, _ := Open(dir)
+	before := sopsDecrypt(t, dir, "secrets/dev.yaml")
+	keyBefore := dataKey(t, dir, "secrets/dev.yaml")
+	version, err := ws.Rotate("secrets/dev.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dataKey(t, dir, "secrets/dev.yaml") == keyBefore {
+		t.Error("rotate must change the data key")
+	}
+	if after := sopsDecrypt(t, dir, "secrets/dev.yaml"); after != before {
+		t.Errorf("rotate changed the values:\n%s\nwant:\n%s", after, before)
+	}
+	if reveal(t, ws, "secrets/dev.yaml").Version != version {
+		t.Error("returned version does not match the file on disk")
+	}
+}
