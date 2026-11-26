@@ -126,9 +126,7 @@ function Sidebar({
     <aside className="sidebar">
       <div className="sidebar__header">
         <div className="brand grow">
-          <span className="brand__mark">
-            <Icon name="lock" size={15} />
-          </span>
+          <img className="brand__logo" src="/finnick.svg" alt="" width={40} height={36} />
           <span>Finnick</span>
         </div>
         <button

@@ -27,4 +27,4 @@ dev-web: web/node_modules ## Vite on :5173, proxying /api to :7777
 	npm --prefix web run dev
 
 clean:
-	rm -rf bin dist web/dist/assets web/dist/index.html web/dist/favicon.svg
+	rm -rf bin dist web/dist/assets web/dist/index.html web/dist/finnick.svg
