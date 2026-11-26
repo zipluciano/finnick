@@ -1,5 +1,8 @@
 # Architecture
 
+This document describes the current design. The reasons behind each choice are in the
+[decision records](adr/README.md).
+
 ## Principles
 
 1. **The repository is the source of truth.** Finnick never keeps its own database. Everything it shows
