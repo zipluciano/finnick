@@ -22,6 +22,9 @@ reflows folded strings, and editing the goccy/go-yaml AST loses comments next to
   including line endings.
 - **Keep each list's style.** A block list gets a new line, a flow list (`[*a, *b]`) gets a new item, a
   comma-separated string gets the key appended to it. A lone alias (`age: *a`) becomes a flow list.
+- **Rules move as blocks.** Adding a rule inserts it at the chosen position; moving or deleting one takes
+  its comment lines along, and moving it back restores the file. A repository without `.sops.yaml` gets
+  one, at its root, when its first rule is added. A `path_regex` must compile as RE2, like in SOPS.
 - **Names are anchors.** Adding a person adds `- &name age1…` to the top-level `keys` list, creating it above
   `creation_rules` if needed, and rules refer to it as `*name`. Removing a person takes the key out of every
   rule and drops its entry from `keys`.
@@ -29,6 +32,8 @@ reflows folded strings, and editing the goccy/go-yaml AST loses comments next to
   operations asked for: same rules and regexes, the recipients of each rule changed only as requested, and
   the same names. If anything else differs, or the text no longer parses, nothing is written and the UI
   asks for the change to be made by hand. A rule or key group is never left without recipients.
+- **Preview, then save once.** Rule changes are previewed in the UI before anything is written: which files
+  each rule will cover and which will need their keys updated. They are saved together, as one change.
 - **Same safety as file writes** ([ADR 0009](0009-writing-sops-files.md)): every change carries the version
   of the file it was based on and is refused if the file changed since; changes are all or nothing and
   replace the file atomically; symlinks are refused.

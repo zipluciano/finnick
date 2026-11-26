@@ -254,3 +254,126 @@ func TestEditConfigKeepsShape(t *testing.T) {
 		t.Errorf("got %v: %q\nwant: %q", err, got, want)
 	}
 }
+
+func TestEditConfigRules(t *testing.T) {
+	tests := []struct {
+		name string
+		ops  []ConfigOp
+		repl [][2]string
+	}{
+		{
+			name: "add a rule at the top",
+			ops:  []ConfigOp{{Op: "addRule", To: 0, PathRegex: `^secrets/prod\.env$`, Keys: []string{"{A}"}}},
+			repl: [][2]string{{"  # production: alice and CI only\n", "  - path_regex: ^secrets/prod\\.env$\n    age: [*alice]\n  # production: alice and CI only\n"}},
+		},
+		{
+			name: "add a rule at the end, with a key that has no name",
+			ops:  []ConfigOp{{Op: "addRule", To: 4, PathRegex: "", Keys: []string{"{B}", "{D}"}}},
+			repl: [][2]string{{"      {B}\n", "      {B}\n  - age: [*bob, {D}]\n"}},
+		},
+		{
+			name: "change, add and remove path_regex",
+			ops: []ConfigOp{
+				{Op: "setRegex", Rule: 1, PathRegex: "stage/.*"},
+				{Op: "setRegex", Rule: 3, PathRegex: "a: b"},
+				{Op: "setRegex", Rule: 2, PathRegex: ""},
+			},
+			repl: [][2]string{
+				{"path_regex: staging/.*", "path_regex: stage/.*"},
+				{"      {B}\n", "      {B}\n    path_regex: 'a: b'\n"},
+				{"  - path_regex: dev/.*\n    age: *bob\n", "  - age: *bob\n"},
+			},
+		},
+		{
+			name: "delete a rule with its comment",
+			ops:  []ConfigOp{{Op: "deleteRule", Rule: 0}},
+			repl: [][2]string{{"  # production: alice and CI only\n  - path_regex: prod/.*\n    key_groups:\n      - age:\n          - *alice\n          - *ci\n\n", ""}},
+		},
+		{
+			name: "move a rule down and back up",
+			ops:  []ConfigOp{{Op: "moveRule", Rule: 0, To: 2}, {Op: "moveRule", Rule: 2, To: 0}},
+		},
+		{
+			name: "move the last rule to the top",
+			ops:  []ConfigOp{{Op: "moveRule", Rule: 3, To: 0}},
+			repl: [][2]string{
+				{"  - age: >-\n      {A},\n      {B}\n", ""},
+				{"  # production: alice and CI only\n", "  - age: >-\n      {A},\n      {B}\n  # production: alice and CI only\n"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for i := range tt.ops {
+				for j, k := range tt.ops[i].Keys {
+					tt.ops[i].Keys[j] = withKeys(k)
+				}
+			}
+			got, err := editConfig(t, peopleConfig, tt.ops...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := peopleConfig
+			for _, r := range tt.repl {
+				if !strings.Contains(want, r[0]) {
+					t.Fatalf("bad test: %q not in config", r[0])
+				}
+				want = strings.Replace(want, r[0], r[1], 1)
+			}
+			if want = withKeys(want); got != want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func TestEditConfigSpacedRules(t *testing.T) {
+	src := "creation_rules:\n  - path_regex: a\n    age: {A}\n\n  - path_regex: b\n    age: {A}\n\n  - age: {A}\n"
+	got, err := editConfig(t, src, ConfigOp{Op: "moveRule", Rule: 0, To: 2}, ConfigOp{Op: "addRule", To: 1, PathRegex: "c", Keys: []string{testKeys["B"]}})
+	want := withKeys("creation_rules:\n  - path_regex: b\n    age: {A}\n\n  - path_regex: c\n    age: [{B}]\n\n  - age: {A}\n\n  - path_regex: a\n    age: {A}\n")
+	if err != nil || got != want {
+		t.Errorf("got %v:\n%s\nwant:\n%s", err, got, want)
+	}
+}
+
+func TestEditConfigRuleRefusals(t *testing.T) {
+	tests := []struct {
+		name string
+		ops  []ConfigOp
+		want error
+	}{
+		{"bad regex", []ConfigOp{{Op: "setRegex", Rule: 0, PathRegex: "(?=x)"}}, ErrInvalidRegex},
+		{"no recipients", []ConfigOp{{Op: "addRule", To: 0, PathRegex: "x"}}, ErrLastRecipient},
+		{"bad position", []ConfigOp{{Op: "addRule", To: 9, Keys: []string{testKeys["A"]}}}, ErrRuleNotFound},
+		{"no such rule", []ConfigOp{{Op: "deleteRule", Rule: 4}}, ErrRuleNotFound},
+		{"move out of range", []ConfigOp{{Op: "moveRule", Rule: 0, To: 4}}, ErrRuleNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := editConfig(t, peopleConfig, tt.ops...); !errors.Is(err, tt.want) {
+				t.Errorf("got %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+// A repository without .sops.yaml gets one with its first rule, and SOPS uses it.
+func TestEditConfigCreatesTheFile(t *testing.T) {
+	dir := t.TempDir()
+	ws := &Workspace{Root: dir}
+	key := testKeys["A"]
+	cfg, err := ws.EditConfig("", []ConfigOp{{Op: "addRule", PathRegex: `\.env$`, Keys: []string{key}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, ".sops.yaml"))
+	if want := "creation_rules:\n  - path_regex: \\.env$\n    age: [" + key + "]\n"; string(got) != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+	if cfg.RuleFor("x.env") != 0 || ws.Config() == nil {
+		t.Errorf("config not loaded: %+v", cfg)
+	}
+	if _, err := ws.EditConfig("", []ConfigOp{{Op: "addRule", Keys: []string{key}}}); !errors.Is(err, ErrStale) {
+		t.Errorf("second create: %v, want ErrStale", err)
+	}
+}

@@ -118,6 +118,7 @@ creation_rules:
 - `path_regex` is matched against the path **relative to the folder of `.sops.yaml`**. Run sops commands from
   the repository root.
 - The anchor names (`&ana`) are what Finnick shows in the UI.
+- You can also write this file from Finnick: **Add person** and **Add rule** create it and keep it tidy.
 - `.sops.yaml` only holds **public** keys: commit it like any other file.
 
 ## 4. Create the secret files
@@ -218,12 +219,14 @@ What you will find:
   opens the person's page, where you change their rules or remove them. Finnick edits only the lines involved,
   so comments and formatting stay.
 - **Rules:** the `creation_rules` in the order sops applies them, which files each one covers, and the files no
-  rule covers.
+  rule covers. **Add rule**, and the arrows, pencil and trash on each rule, change them: nothing is written
+  until you save, and meanwhile each rule shows the files it will cover and which of them will need their
+  keys updated. In a repository without `.sops.yaml`, the first rule creates it.
 - **Footer:** theme (system, light, dark) and language (English, Português, Español). Choices are saved in
   `~/.config/finnick/settings.json`.
 
 Binary files and YAML files with several documents are read-only in Finnick: edit them with `sops edit`, then
-hit rescan (↻). Editing rules and git from the UI are on the [roadmap](roadmap.md).
+hit rescan (↻). Git from the UI is on the [roadmap](roadmap.md).
 
 ## 7. Give someone access
 

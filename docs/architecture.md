@@ -61,7 +61,7 @@ content replaces the file atomically.
 New files take their recipients from the matching creation rule. **Update keys** re-encrypts a file's data key
 for the recipients its rule lists now (`sops updatekeys`), and **rotate** replaces the data key (`sops rotate`).
 
-Adding and removing people changes `.sops.yaml` as text, guided by a yaml.v3 parse, so comments, blank lines
+Adding and removing people, and adding, editing, moving and deleting rules, changes `.sops.yaml` as text, guided by a yaml.v3 parse, so comments, blank lines
 and anchors stay; the result is read back and must mean exactly what was asked before it replaces the file
 ([ADR 0010](adr/0010-editing-sops-yaml.md)). The UI then updates keys and rotates the affected files.
 

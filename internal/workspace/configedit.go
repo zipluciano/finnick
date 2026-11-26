@@ -23,19 +23,27 @@ var (
 	ErrRuleNotFound     = errors.New("no creation rule at this position")
 	ErrLastRecipient    = errors.New("a rule must keep at least one recipient")
 	ErrKeyGroups        = errors.New("rules with several key groups are edited by hand")
+	ErrInvalidRegex     = errors.New("path_regex is not a valid regular expression (RE2 syntax, as in SOPS)")
 )
 
 // ConfigOp is one change to .sops.yaml. Keys are age public keys; rules are positions in
-// creation_rules.
+// creation_rules at the moment the op applies (ops apply in order).
 //
 //   - addPerson: name the key Key as Name (`- &Name Key` in the top-level keys list)
 //   - removePerson: take Key out of every rule and drop its name
 //   - grant / revoke: add Key to rule Rule, or take it out
+//   - addRule: insert a rule at position To with PathRegex (empty matches every file) for Keys
+//   - setRegex: change the PathRegex of rule Rule (empty removes it)
+//   - moveRule: move rule Rule to position To
+//   - deleteRule: remove rule Rule
 type ConfigOp struct {
-	Op   string `json:"op"`
-	Name string `json:"name,omitempty"`
-	Key  string `json:"key,omitempty"`
-	Rule int    `json:"rule,omitempty"`
+	Op        string   `json:"op"`
+	Name      string   `json:"name,omitempty"`
+	Key       string   `json:"key,omitempty"`
+	Rule      int      `json:"rule,omitempty"`
+	To        int      `json:"to,omitempty"`
+	PathRegex string   `json:"pathRegex,omitempty"`
+	Keys      []string `json:"keys,omitempty"`
 }
 
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
@@ -56,22 +64,26 @@ func (ws *Workspace) EditConfig(version string, ops []ConfigOp) (*Config, error)
 	defer ws.writeMu.Unlock()
 
 	path := ws.ConfigPath()
+	var data []byte
 	st, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, ErrNoConfig
-	}
-	if err != nil {
+	creating := errors.Is(err, os.ErrNotExist)
+	switch {
+	case creating:
+		// A repository without .sops.yaml gets one, at its root, when it adds its first rule.
+		if version != "" {
+			return nil, ErrStale
+		}
+	case err != nil:
 		return nil, err
-	}
-	if !st.Mode().IsRegular() {
+	case !st.Mode().IsRegular():
 		return nil, fmt.Errorf("%w: it is not a regular file", ErrConfigLayout)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	if Version(data) != version {
-		return nil, ErrStale
+	default:
+		if data, err = os.ReadFile(path); err != nil {
+			return nil, err
+		}
+		if Version(data) != version {
+			return nil, ErrStale
+		}
 	}
 	before, err := parseConfig(path, data)
 	if err != nil {
@@ -98,13 +110,39 @@ func (ws *Workspace) EditConfig(version string, ops []ConfigOp) (*Config, error)
 	if emptyRules(after) > emptyRules(before) {
 		return nil, ErrLastRecipient
 	}
-	if err := replaceFile(path, out); err != nil {
+	if creating {
+		err = createFile(path, out)
+	} else {
+		err = replaceFile(path, out)
+	}
+	if err != nil {
 		return nil, err
 	}
 	ws.mu.Lock()
 	ws.config = after
 	ws.mu.Unlock()
 	return after, nil
+}
+
+// createFile writes a new file, refusing to replace one that appeared meanwhile.
+func createFile(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return ErrStale
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(path)
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // layoutErr reports text the editor cannot change safely as ErrConfigLayout; known errors pass.
@@ -120,12 +158,16 @@ func layoutErr(err error) error {
 }
 
 func applyConfigOp(t *yamlText, want *model, op ConfigOp) error {
-	if t.root == nil {
-		return ErrNoConfig
-	}
 	key := strings.TrimSpace(op.Key)
-	if !isAgeRecipient(key) {
-		return ErrInvalidRecipient
+	switch op.Op {
+	case "addPerson", "removePerson", "grant", "revoke":
+		if !isAgeRecipient(key) {
+			return ErrInvalidRecipient
+		}
+	case "setRegex", "moveRule", "deleteRule":
+		if op.Rule < 0 || op.Rule >= len(want.rules) {
+			return ErrRuleNotFound
+		}
 	}
 	switch op.Op {
 	case "addPerson":
@@ -157,10 +199,153 @@ func applyConfigOp(t *yamlText, want *model, op ConfigOp) error {
 			return err
 		}
 		want.revoke(op.Rule, key)
+	case "addRule":
+		if op.To < 0 || op.To > len(want.rules) {
+			return ErrRuleNotFound
+		}
+		keys, err := ruleKeys(op.Keys)
+		if err != nil {
+			return err
+		}
+		if err := checkRegex(op.PathRegex); err != nil {
+			return err
+		}
+		if err := addRule(t, op.To, op.PathRegex, keys); err != nil {
+			return err
+		}
+		group := map[string]bool{}
+		for _, k := range keys {
+			group[Recipient{Type: "age", ID: k}.key()] = true
+		}
+		rule := modelRule{regex: op.PathRegex, groups: []map[string]bool{group}}
+		want.rules = append(want.rules[:op.To], append([]modelRule{rule}, want.rules[op.To:]...)...)
+	case "setRegex":
+		if err := checkRegex(op.PathRegex); err != nil {
+			return err
+		}
+		if err := setRegex(t, op.Rule, op.PathRegex); err != nil {
+			return err
+		}
+		want.rules[op.Rule].regex = op.PathRegex
+	case "moveRule":
+		if op.To < 0 || op.To >= len(want.rules) {
+			return ErrRuleNotFound
+		}
+		if err := t.moveItem(func() *yaml.Node { _, r := entry(t.root, "creation_rules"); return r }, op.Rule, op.To); err != nil {
+			return err
+		}
+		r := want.rules[op.Rule]
+		rest := append(append([]modelRule(nil), want.rules[:op.Rule]...), want.rules[op.Rule+1:]...)
+		want.rules = append(rest[:op.To], append([]modelRule{r}, rest[op.To:]...)...)
+	case "deleteRule":
+		_, rules := entry(t.root, "creation_rules")
+		if !isBlock(rules) {
+			return errLayout
+		}
+		if err := t.removeItem(rules, op.Rule); err != nil {
+			return err
+		}
+		want.rules = append(want.rules[:op.Rule], want.rules[op.Rule+1:]...)
 	default:
 		return fmt.Errorf("unknown operation %q", op.Op)
 	}
 	return nil
+}
+
+func ruleKeys(keys []string) ([]string, error) {
+	var out []string
+	for _, k := range keys {
+		k = strings.TrimSpace(k)
+		if !isAgeRecipient(k) {
+			return nil, ErrInvalidRecipient
+		}
+		if !contains(out, k) {
+			out = append(out, k)
+		}
+	}
+	if len(out) == 0 {
+		return nil, ErrLastRecipient
+	}
+	return out, nil
+}
+
+func checkRegex(re string) error {
+	if strings.ContainsAny(re, "\n\r") {
+		return ErrInvalidRegex
+	}
+	if _, err := regexp.Compile(re); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidRegex, err)
+	}
+	return nil
+}
+
+// addRule inserts a rule at position at, starting creation_rules (or the whole file) when needed.
+func addRule(t *yamlText, at int, regex string, keys []string) error {
+	ki, rules := entry(t.root, "creation_rules")
+	line := len(t.lines) + 1 // anchors anywhere above the new rule can be used
+	if rules != nil {
+		line = t.root.Content[2*ki].Line
+	}
+	refs := make([]string, len(keys))
+	for i, k := range keys {
+		refs[i] = refFor(t, k, line)
+	}
+	var body []string
+	if regex != "" {
+		text, err := scalarText(regex)
+		if err != nil {
+			return err
+		}
+		body = append(body, "path_regex: "+text)
+	}
+	body = append(body, "age: ["+strings.Join(refs, ", ")+"]")
+
+	if rules != nil && rules.Kind == yaml.SequenceNode && len(rules.Content) > 0 {
+		return t.insertItem(rules, at, body)
+	}
+	if rules != nil {
+		// `creation_rules:` with nothing (or `[]`) after it: write the list again at the end.
+		if (rules.Kind != yaml.SequenceNode && rules.Tag != "!!null") || at != 0 {
+			return errLayout
+		}
+		if err := t.removeEntry(t.root, ki); err != nil {
+			return err
+		}
+	}
+	lines := []string{"creation_rules:", "  - " + body[0]}
+	for _, b := range body[1:] {
+		lines = append(lines, "    "+b)
+	}
+	if n := len(t.lines); n > 0 && !blank(t.lines[n-1]) {
+		lines = append([]string{""}, lines...)
+	}
+	return t.insert(len(t.lines), lines...)
+}
+
+func setRegex(t *yamlText, i int, regex string) error {
+	_, rules := entry(t.root, "creation_rules")
+	if rules == nil || !isBlock(rules) || i >= len(rules.Content) {
+		return errLayout
+	}
+	r := rules.Content[i]
+	if r.Kind != yaml.MappingNode || !isBlock(r) {
+		return errLayout
+	}
+	idx, v := entry(r, "path_regex")
+	if regex == "" {
+		if v == nil {
+			return nil
+		}
+		return t.removeEntry(r, idx)
+	}
+	text, err := scalarText(regex)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return t.addEntry(r, "path_regex", text)
+	}
+	return t.setValue(r, idx, text)
 }
 
 // anchors maps every anchor name in the document to its node.

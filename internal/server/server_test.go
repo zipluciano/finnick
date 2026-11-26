@@ -101,7 +101,7 @@ func TestAuthFlow(t *testing.T) {
 		t.Fatalf("config without csrf header: %d", w.Code)
 	}
 	w = do(h, "POST", "/api/config", host, func(r *http.Request) { withCookie(r); r.Header.Set(csrfHeader, "1") })
-	if w.Code != http.StatusBadRequest { // no version or ops
+	if w.Code != http.StatusBadRequest { // no ops
 		t.Fatalf("config with an incomplete body: %d %s", w.Code, w.Body)
 	}
 	for _, endpoint := range []string{"/api/updatekeys", "/api/rotate"} {
