@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOPS_VERSION: v3.13.3
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install sops
+        run: |
+          curl -fsSL -o /usr/local/bin/sops \
+            "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Build UI
+        run: |
+          npm --prefix web ci
+          npm --prefix web run build
+
+      - name: gofmt
+        run: test -z "$(gofmt -l cmd internal web/embed.go)" || (gofmt -l cmd internal web/embed.go; exit 1)
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -race ./...
+
+      - name: Build binary
+        run: go build -o bin/finnick ./cmd/finnick && ./bin/finnick version
