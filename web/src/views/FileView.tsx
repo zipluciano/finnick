@@ -50,7 +50,7 @@ export function FileView({ ws, file, onChanged }: { ws: Workspace; file: SecretF
         </div>
       </header>
 
-      {file.drift && <DriftBanner file={file} />}
+      {file.drift && <DriftBanner file={file} onChanged={onChanged} />}
 
       <div className="tabs" role="tablist">
         <button type="button" role="tab" className="tab" aria-selected={tab === "secrets"} onClick={() => setTab("secrets")}>
@@ -62,23 +62,60 @@ export function FileView({ ws, file, onChanged }: { ws: Workspace; file: SecretF
         </button>
       </div>
 
-      {tab === "secrets" ? <SecretsTab file={file} onChanged={onChanged} /> : <AccessTab ws={ws} file={file} />}
+      {tab === "secrets" ? <SecretsTab file={file} onChanged={onChanged} /> : <AccessTab ws={ws} file={file} onChanged={onChanged} />}
     </div>
   );
 }
 
-function DriftBanner({ file }: { file: SecretFile }) {
-  const { t, tp } = usePrefs();
+/** Runs an action once at a time and keeps its error. */
+function useAction() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      return true;
+    } catch (e) {
+      setError(e);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, run };
+}
+
+function DriftBanner({ file, onChanged }: { file: SecretFile; onChanged: () => void }) {
+  const { t, tp, errorText } = usePrefs();
+  const { busy, error, run } = useAction();
   const { missing, extra } = file.drift!;
   const names = (rs: Recipient[]) => rs.map((r) => r.name ?? r.type).join(", ");
+  const update = () => run(() => api.updateKeys(file.path)).then((ok) => ok && onChanged());
   return (
     <div className="page__section">
       <Banner tone="warning" icon="alert" title={t("drift.title")}>
         <span>
           {missing.length > 0 && tp("drift.missing", missing.length, { names: names(missing) })}{" "}
-          {extra.length > 0 && tp("drift.extra", extra.length, { names: names(extra) })} {t("drift.fix")}
+          {extra.length > 0 && tp("drift.extra", extra.length, { names: names(extra) })}
         </span>
+        {file.canDecrypt ? (
+          <div className="row row--wrap">
+            <button type="button" className="btn btn--primary" onClick={update} disabled={busy}>
+              {busy ? <span className="spinner" /> : <Icon name="refresh" size={14} />} {t("drift.update")}
+            </button>
+            <span className="small">{t("drift.orTerminal")}</span>
+          </div>
+        ) : (
+          <span>{t("drift.needAccess")}</span>
+        )}
         <Command>{`sops updatekeys -y ${file.path}`}</Command>
+        {error != null && (
+          <strong>
+            {t("drift.updateError")}: {errorText(error)}
+          </strong>
+        )}
         {extra.length > 0 && <span>{t("drift.revokeWarning")}</span>}
       </Banner>
     </div>
@@ -408,7 +445,7 @@ function AddRow({ format, saving, onSave, onCancel }: {
   );
 }
 
-function AccessTab({ ws, file }: { ws: Workspace; file: SecretFile }) {
+function AccessTab({ ws, file, onChanged }: { ws: Workspace; file: SecretFile; onChanged: () => void }) {
   const { t, tn } = usePrefs();
   const rule = file.rule >= 0 ? ws.config?.rules?.[file.rule] : undefined;
   const seen = new Set<string>();
@@ -452,6 +489,61 @@ function AccessTab({ ws, file }: { ws: Workspace; file: SecretFile }) {
       <p className="small muted">
         {tn("access.footnote", { config: <code>.sops.yaml</code>, command: <code>sops updatekeys</code> })}
       </p>
+      <RotateCard file={file} onChanged={onChanged} />
+    </div>
+  );
+}
+
+function RotateCard({ file, onChanged }: { file: SecretFile; onChanged: () => void }) {
+  const { t, tn, errorText } = usePrefs();
+  const { busy, error, run } = useAction();
+  const [confirming, setConfirming] = useState(false);
+  const [done, setDone] = useState(false);
+  const rotate = () =>
+    run(() => api.rotate(file.path)).then((ok) => {
+      setConfirming(false);
+      setDone(ok);
+      if (ok) onChanged();
+    });
+
+  return (
+    <div className="card">
+      <div className="card__header">
+        <h3>{t("rotate.title")}</h3>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setConfirming(true)}
+          disabled={!file.canDecrypt || confirming}
+        >
+          <Icon name="refresh" size={14} /> {t("rotate.action")}
+        </button>
+      </div>
+      <div className="card__body stack stack--sm">
+        <p className="small muted">{tn("rotate.body", { command: <code>sops rotate</code> })}</p>
+        {confirming && (
+          <div className="row row--wrap">
+            <strong className="small">{t("rotate.confirm")}</strong>
+            <button type="button" className="btn btn--sm btn--danger" onClick={rotate} disabled={busy}>
+              {busy ? <span className="spinner" /> : <Icon name="refresh" size={13} />} {t("rotate.confirmAction")}
+            </button>
+            <button type="button" className="btn btn--sm" onClick={() => setConfirming(false)} disabled={busy}>
+              {t("secrets.cancel")}
+            </button>
+          </div>
+        )}
+        {!file.canDecrypt && <p className="small muted">{t("rotate.needAccess")}</p>}
+        {done && (
+          <p className="small">
+            <Icon name="check" size={13} /> {t("rotate.done")}
+          </p>
+        )}
+        {error != null && (
+          <Banner tone="danger" icon="alert" title={t("rotate.error")}>
+            {errorText(error)}
+          </Banner>
+        )}
+      </div>
     </div>
   );
 }

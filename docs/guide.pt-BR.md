@@ -242,20 +242,24 @@ depois clique em reescanear (↻). Gestão de pessoas e git pela interface estã
    ```
 3. Abra o Finnick: em **Pessoas e chaves**, o caio aparece como **aguardando updatekeys**. Mudar o
    `.sops.yaml` sozinho não dá acesso a ninguém.
-4. Cifre os arquivos de novo para as chaves atuais (é preciso que você mesmo consiga decifrá-los):
+4. Cifre os arquivos de novo para as chaves atuais (é preciso que você mesmo consiga decifrá-los): no
+   Finnick, use **Atualizar chaves** no arquivo, ou **Atualizar chaves em N arquivos** em **Regras**. No
+   terminal:
    ```bash
    sops updatekeys -y secrets/*.env
    ```
-5. Reescaneie no Finnick: tudo verde. Faça commit e push, e a pessoa já consegue decifrar depois do
+5. O Finnick mostra todo mundo verde. Faça commit e push, e a pessoa já consegue decifrar depois do
    `git pull`.
 
 ## 8. Tire o acesso de alguém
 
 1. Remova a chave de `keys` e das regras.
-2. Rode `sops updatekeys -y secrets/*.env`. Antes disso, o Finnick mostra a pessoa como **removido da regra**.
+2. Atualize as chaves como no [passo 7](#7-dê-acesso-a-alguém). Antes disso, o Finnick mostra a pessoa como
+   **removido da regra**.
 3. **Importante:** a pessoa continua conseguindo decifrar as versões antigas que estão no histórico do git. Para
-   proteger de verdade, **troque os valores** no provedor (senhas, tokens, chaves de API), grave os novos com
-   `sops edit` e gere uma chave de dados nova:
+   proteger de verdade, **troque os valores** no provedor (senhas, tokens, chaves de API), grave os novos (no
+   Finnick ou com `sops edit`) e gere uma chave de dados nova: **Rotacionar chave de dados** na aba Acesso do
+   arquivo, ou
    ```bash
    sops rotate -i secrets/prod.env
    ```

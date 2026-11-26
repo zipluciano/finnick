@@ -91,6 +91,81 @@ func (ws *Workspace) open(rel, path string) (*opened, error) {
 	return &opened{path: path, format: format, store: store, data: data, tree: tree, dataKey: key}, nil
 }
 
+// UpdateKeys encrypts the data key of the file at rel for the recipients its creation rule lists
+// now, like `sops updatekeys -y`: values and the data key stay the same, so people who are removed
+// still know that key (see Rotate). It reports whether the file changed.
+func (ws *Workspace) UpdateKeys(rel string) (bool, error) {
+	path, err := ws.resolveWrite(rel)
+	if err != nil {
+		return false, err
+	}
+	if ws.Config == nil {
+		return false, ErrNoRule
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	store := common.StoreForFormat(formats.FormatForPath(path), ws.stores())
+	tree, err := store.LoadEncryptedFile(data)
+	if err != nil {
+		return false, err
+	}
+	rule, err := sopsconfig.LoadCreationRuleForFile(ws.Config.Path, path, map[string]*string{})
+	if err != nil || rule == nil {
+		return false, ErrNoRule
+	}
+	changed := false
+	for _, d := range common.DiffKeyGroups(tree.Metadata.KeyGroups, rule.KeyGroups) {
+		if len(d.Added) > 0 || len(d.Removed) > 0 {
+			changed = true
+		}
+	}
+	// Same Shamir threshold handling as the CLI: keep the file's, capped by the number of groups.
+	threshold := min(tree.Metadata.ShamirThreshold, len(rule.KeyGroups))
+	if !changed && threshold == tree.Metadata.ShamirThreshold {
+		return false, nil
+	}
+	key, err := tree.Metadata.GetDataKey()
+	if err != nil {
+		return false, fmt.Errorf("cannot decrypt %s: %w", rel, ErrNotRecipient)
+	}
+	tree.Metadata.KeyGroups = rule.KeyGroups
+	tree.Metadata.ShamirThreshold = threshold
+	if errs := tree.Metadata.UpdateMasterKeysWithKeyServices(key, localKeyService()); len(errs) > 0 {
+		return false, fmt.Errorf("could not encrypt the data key for every recipient: %v", errs)
+	}
+	out, err := store.EmitEncryptedFile(tree)
+	if err != nil {
+		return false, err
+	}
+	return true, replaceFile(path, out)
+}
+
+// Rotate gives the file at rel a new data key and encrypts every value with it, like
+// `sops rotate -i`. Run it after removing someone: until then they may still hold the old data key.
+func (ws *Workspace) Rotate(rel string) (string, error) {
+	path, err := ws.resolveWrite(rel)
+	if err != nil {
+		return "", err
+	}
+	o, err := ws.open(rel, path)
+	if err != nil {
+		return "", err
+	}
+	key, errs := o.tree.GenerateDataKeyWithKeyServices(localKeyService())
+	if len(errs) > 0 {
+		return "", fmt.Errorf("could not encrypt the new data key for every recipient: %v", errs)
+	}
+	o.dataKey = key
+	version, _, err := o.save()
+	return version, err
+}
+
+func localKeyService() []keyservice.KeyServiceClient {
+	return []keyservice.KeyServiceClient{keyservice.NewLocalClient()}
+}
+
 // encrypt encrypts the tree with its data key (new lastmodified and MAC) and returns the file's bytes
 // and its entries.
 func (o *opened) encrypt() ([]byte, []Entry, error) {
@@ -165,7 +240,7 @@ func (ws *Workspace) Create(rel string, edits []Edit) (string, []Entry, error) {
 			Version:                 version.Version,
 		},
 	}
-	key, errs := tree.GenerateDataKeyWithKeyServices([]keyservice.KeyServiceClient{keyservice.NewLocalClient()})
+	key, errs := tree.GenerateDataKeyWithKeyServices(localKeyService())
 	if len(errs) > 0 {
 		return "", nil, fmt.Errorf("could not encrypt the data key for every recipient: %v", errs)
 	}

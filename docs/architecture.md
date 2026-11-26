@@ -26,7 +26,7 @@ This document describes the current design. The reasons behind each choice are i
    internal/server ─ loopback HTTP, auth token, host check, CSRF header, CSP
                    │
                    ▼
- internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt) · Edit · Create
+ internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt) · Edit · Create · UpdateKeys · Rotate
                    │
                    ▼
    getsops/sops/v3 ─ stores (dotenv/yaml/json/ini/binary), key sources (age, KMS, …), AES-GCM
@@ -58,8 +58,11 @@ data key, producing the same output as `sops edit` ([ADR 0009](adr/0009-writing-
 carries the version (SHA-256) of the file it was based on and is refused if the file changed since; the new
 content replaces the file atomically.
 
+New files take their recipients from the matching creation rule. **Update keys** re-encrypts a file's data key
+for the recipients its rule lists now (`sops updatekeys`), and **rotate** replaces the data key (`sops rotate`).
+
 Planned: adding/removing people edits `.sops.yaml` while preserving comments and anchors (yaml.v3 node API),
-then runs the equivalent of `sops updatekeys` on affected files.
+then updates keys on the affected files.
 
 ### Git sync and the merge problem
 

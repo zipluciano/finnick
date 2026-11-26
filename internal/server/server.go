@@ -65,6 +65,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/reveal", s.authed(s.csrf(http.HandlerFunc(s.handleReveal))))
 	mux.Handle("POST /api/edit", s.authed(s.csrf(http.HandlerFunc(s.handleEdit))))
 	mux.Handle("POST /api/create", s.authed(s.csrf(http.HandlerFunc(s.handleCreate))))
+	mux.Handle("POST /api/updatekeys", s.authed(s.csrf(http.HandlerFunc(s.handleUpdateKeys))))
+	mux.Handle("POST /api/rotate", s.authed(s.csrf(http.HandlerFunc(s.handleRotate))))
 	mux.Handle("GET /api/settings", s.authed(http.HandlerFunc(s.handleGetSettings)))
 	mux.Handle("PUT /api/settings", s.authed(s.csrf(http.HandlerFunc(s.handlePutSettings))))
 	mux.Handle("GET /", s.authed(http.HandlerFunc(s.handleUI)))
@@ -162,19 +164,16 @@ func (s *Server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReveal(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Path string `json:"path"`
-	}
-	if !readJSON(w, r, &req) || req.Path == "" {
-		writeError(w, http.StatusBadRequest, errors.New("body must be {\"path\": \"...\"}"))
+	path, ok := readPath(w, r)
+	if !ok {
 		return
 	}
-	res, err := s.ws.Reveal(req.Path)
+	res, err := s.ws.Reveal(path)
 	if err != nil {
 		writeError(w, statusFor(err), err)
 		return
 	}
-	writeJSON(w, map[string]any{"path": req.Path, "entries": res.Entries, "version": res.Version, "editable": res.Editable})
+	writeJSON(w, map[string]any{"path": path, "entries": res.Entries, "version": res.Version, "editable": res.Editable})
 }
 
 func (s *Server) handleEdit(w http.ResponseWriter, r *http.Request) {
@@ -210,6 +209,44 @@ func (s *Server) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]any{"path": req.Path, "entries": entries, "version": version, "editable": true})
+}
+
+func (s *Server) handleUpdateKeys(w http.ResponseWriter, r *http.Request) {
+	path, ok := readPath(w, r)
+	if !ok {
+		return
+	}
+	changed, err := s.ws.UpdateKeys(path)
+	if err != nil {
+		writeError(w, statusFor(err), err)
+		return
+	}
+	writeJSON(w, map[string]any{"path": path, "changed": changed})
+}
+
+func (s *Server) handleRotate(w http.ResponseWriter, r *http.Request) {
+	path, ok := readPath(w, r)
+	if !ok {
+		return
+	}
+	version, err := s.ws.Rotate(path)
+	if err != nil {
+		writeError(w, statusFor(err), err)
+		return
+	}
+	writeJSON(w, map[string]any{"path": path, "version": version})
+}
+
+// readPath reads a {"path": "..."} body, answering 400 when it is missing.
+func readPath(w http.ResponseWriter, r *http.Request) (string, bool) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if !readJSON(w, r, &req) || req.Path == "" {
+		writeError(w, http.StatusBadRequest, errors.New("body must be {\"path\": \"...\"}"))
+		return "", false
+	}
+	return req.Path, true
 }
 
 // readJSON decodes a small request body. Bodies are capped: none of the API needs more.

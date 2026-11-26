@@ -13,12 +13,12 @@
 - [x] Light/dark/system theme and i18n (en, pt-BR, es), saved in `~/.config/finnick/settings.json`
 - [x] Release binaries for macOS, Linux and Windows (GoReleaser), Homebrew cask
 
-## v0.2: editing
+## v0.2: editing (done)
 
 - [x] Edit, add, rename and delete keys in a file (re-encrypt with the existing data key)
 - [x] Create a file for a new environment/project; recipients come from the matching rule
-- [ ] Run `updatekeys` for one file or all drifted files
-- [ ] Rotate the data key (`sops rotate`)
+- [x] Run `updatekeys` for one file or all drifted files
+- [x] Rotate the data key (`sops rotate`)
 
 ## v0.3: people and rules
 

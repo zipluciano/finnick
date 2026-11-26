@@ -27,6 +27,10 @@ something `sops` rejects, or puts clear text on disk is worse than not having th
 - **New files follow the rules.** A file is created only when a creation rule matches its path; its
   recipients, key groups and encryption settings come from that rule, as with `sops encrypt`. It is
   written with an exclusive create, so a file that appeared meanwhile is never replaced.
+- **The data key changes only on purpose.** Edits and `updatekeys` keep the data key; updating keys
+  re-encrypts it for the recipients the rule lists now, as `sops updatekeys -y` does, and needs the
+  user to be able to decrypt it. Only rotation (`sops rotate`) creates a new one and encrypts every
+  value again. The UI points to rotation whenever a recipient is removed.
 - **Values keep their type.** A new value that parses as the old one's type (number, boolean) stays that
   type; anything else is a string. New keys are strings.
 - **What is left to `sops edit`.** Binary files, YAML files with several documents, and changes to whole

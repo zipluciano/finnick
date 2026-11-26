@@ -1,10 +1,11 @@
-import type { Workspace } from "../api";
+import { useState } from "react";
+import { api, type Workspace } from "../api";
 import { Icon } from "../components/Icon";
 import { Banner, Empty, RecipientChip } from "../components/ui";
 import { flat, isMe, recipientKey } from "../model";
 import { usePrefs } from "../prefs";
 
-export function RulesView({ ws }: { ws: Workspace }) {
+export function RulesView({ ws, onChanged }: { ws: Workspace; onChanged: () => Promise<void> }) {
   const { t, tp, tn } = usePrefs();
 
   if (!ws.config) {
@@ -40,6 +41,7 @@ export function RulesView({ ws }: { ws: Workspace }) {
       </header>
 
       <div className="stack stack--lg">
+        <SyncAll ws={ws} onChanged={onChanged} />
         {rules.length === 0 ? (
           <Empty icon="rules" title={t("rules.emptyTitle")}>
             {t("rules.emptyBody")}
@@ -100,6 +102,74 @@ export function RulesView({ ws }: { ws: Workspace }) {
           </Banner>
         )}
       </div>
+    </div>
+  );
+}
+
+type SyncResult = { updated: number; failed: { path: string; error: unknown }[] };
+
+/** Runs updatekeys on every out-of-sync file the user can decrypt, one at a time. */
+function SyncAll({ ws, onChanged }: { ws: Workspace; onChanged: () => Promise<void> }) {
+  const { t, tp, errorText } = usePrefs();
+  const [progress, setProgress] = useState<number | null>(null);
+  const [result, setResult] = useState<SyncResult | null>(null);
+  const drifted = ws.files.filter((f) => f.drift && f.rule >= 0);
+  const mine = drifted.filter((f) => f.canDecrypt);
+  const locked = drifted.length - mine.length;
+
+  const run = async () => {
+    const res: SyncResult = { updated: 0, failed: [] };
+    setResult(null);
+    for (const [i, f] of mine.entries()) {
+      setProgress(i);
+      try {
+        await api.updateKeys(f.path);
+        res.updated++;
+      } catch (error) {
+        res.failed.push({ path: f.path, error });
+      }
+    }
+    setProgress(null);
+    setResult(res);
+    await onChanged();
+  };
+
+  if (drifted.length === 0 && !result) return null;
+  return (
+    <div className="stack">
+      {drifted.length > 0 && (
+        <Banner tone="warning" icon="alert" title={tp("rules.drifted", drifted.length)}>
+          {mine.length > 0 && (
+            <div className="row row--wrap">
+              <button type="button" className="btn btn--primary" onClick={run} disabled={progress !== null}>
+                {progress !== null ? <span className="spinner" /> : <Icon name="refresh" size={14} />}{" "}
+                {tp("rules.updateAll", mine.length)}
+              </button>
+              {progress !== null && (
+                <span className="small">{t("rules.updating", { done: progress, total: mine.length })}</span>
+              )}
+            </div>
+          )}
+          {locked > 0 && <span>{tp("rules.lockedDrift", locked)}</span>}
+        </Banner>
+      )}
+      {result && (
+        <Banner
+          tone={result.failed.length ? "danger" : "info"}
+          icon={result.failed.length ? "alert" : "check"}
+          title={tp("rules.updated", result.updated)}
+        >
+          {result.failed.length > 0 && (
+            <ul className="stack stack--sm">
+              {result.failed.map((f) => (
+                <li key={f.path}>
+                  <code>{f.path}</code>: {errorText(f.error)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Banner>
+      )}
     </div>
   );
 }
