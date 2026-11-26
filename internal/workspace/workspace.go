@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/getsops/sops/v3"
@@ -31,8 +32,42 @@ var skipDirs = map[string]bool{
 
 // Workspace is a repository with SOPS files, rooted where its .sops.yaml lives (or at the git root).
 type Workspace struct {
-	Root   string
-	Config *Config // nil when the workspace has no .sops.yaml
+	Root string
+
+	mu      sync.RWMutex
+	config  *Config    // nil when the workspace has no .sops.yaml
+	writeMu sync.Mutex // one change to .sops.yaml at a time
+}
+
+// Config returns the .sops.yaml as last read, or nil when the workspace has none.
+func (ws *Workspace) Config() *Config {
+	ws.mu.RLock()
+	defer ws.mu.RUnlock()
+	return ws.config
+}
+
+// ConfigPath is where the workspace's .sops.yaml is, or would be created.
+func (ws *Workspace) ConfigPath() string {
+	if c := ws.Config(); c != nil {
+		return c.Path
+	}
+	return filepath.Join(ws.Root, ".sops.yaml")
+}
+
+// Reload reads .sops.yaml again, so changes made outside Finnick show up.
+func (ws *Workspace) Reload() error {
+	path := ws.ConfigPath()
+	cfg, err := LoadConfig(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		cfg, err = nil, nil
+	}
+	if err != nil {
+		return err
+	}
+	ws.mu.Lock()
+	ws.config = cfg
+	ws.mu.Unlock()
+	return nil
 }
 
 // Open finds the .sops.yaml for dir the way SOPS does (dir, then its parents) and roots the
@@ -53,7 +88,7 @@ func Open(dir string) (*Workspace, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &Workspace{Root: filepath.Dir(res.Path), Config: cfg}, nil
+		return &Workspace{Root: filepath.Dir(res.Path), config: cfg}, nil
 	}
 	if root := gitRoot(abs); root != "" {
 		return &Workspace{Root: root}, nil
@@ -99,6 +134,7 @@ func (ws *Workspace) Scan(local Identity) ([]File, error) {
 	for _, r := range local.Recipients {
 		mine[r] = true
 	}
+	cfg := ws.Config()
 	var files []File
 	err := filepath.WalkDir(ws.Root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -113,7 +149,7 @@ func (ws *Workspace) Scan(local Identity) ([]File, error) {
 		if !d.Type().IsRegular() || d.Name() == ".sops.yaml" || d.Name() == ".sops.yml" {
 			return nil
 		}
-		f, ok := ws.inspect(path, mine)
+		f, ok := ws.inspect(cfg, path, mine)
 		if ok {
 			files = append(files, f)
 		}
@@ -123,7 +159,7 @@ func (ws *Workspace) Scan(local Identity) ([]File, error) {
 	return files, err
 }
 
-func (ws *Workspace) inspect(path string, mine map[string]bool) (File, bool) {
+func (ws *Workspace) inspect(cfg *Config, path string, mine map[string]bool) (File, bool) {
 	st, err := os.Stat(path)
 	if err != nil || st.Size() > maxFileSize {
 		return File{}, false
@@ -144,13 +180,13 @@ func (ws *Workspace) inspect(path string, mine map[string]bool) (File, bool) {
 		LastModified: tree.Metadata.LastModified,
 		SopsVersion:  tree.Metadata.Version,
 		Keys:         keyNames(tree.Branches),
-		Rule:         ws.Config.RuleFor(rel),
+		Rule:         cfg.RuleFor(rel),
 	}
 	for _, g := range tree.Metadata.KeyGroups {
 		var group []Recipient
 		for _, k := range g {
 			r := Recipient{Type: k.TypeToIdentifier(), ID: normalizeID(k.TypeToIdentifier(), k.ToString())}
-			r.Name = ws.Config.name(r.ID)
+			r.Name = cfg.name(r.ID)
 			if r.Type == "age" && mine[r.ID] {
 				f.CanDecrypt = true
 			}
@@ -159,7 +195,7 @@ func (ws *Workspace) inspect(path string, mine map[string]bool) (File, bool) {
 		f.KeyGroups = append(f.KeyGroups, group)
 	}
 	if f.Rule >= 0 {
-		f.Drift = drift(f.KeyGroups, ws.Config.Rules[f.Rule].KeyGroups)
+		f.Drift = drift(f.KeyGroups, cfg.Rules[f.Rule].KeyGroups)
 	}
 	return f, true
 }

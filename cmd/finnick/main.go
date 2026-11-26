@@ -79,10 +79,10 @@ func runUI(args []string) error {
 	httpSrv := srv.Serve(ln)
 
 	fmt.Printf("finnick %s\n  repository: %s\n", version, ws.Root)
-	if ws.Config == nil {
+	if cfg := ws.Config(); cfg == nil {
 		fmt.Println("  config:     no .sops.yaml found; listing encrypted files only")
 	} else {
-		fmt.Printf("  config:     %s\n", ws.Config.Path)
+		fmt.Printf("  config:     %s\n", cfg.Path)
 	}
 	fmt.Printf("\n  Open: %s\n\n  The link works for this session only. Press Ctrl+C to stop.\n", url)
 	if !*noOpen {

@@ -115,3 +115,23 @@ export function Empty({ icon, title, children }: { icon: IconName; title: string
     </div>
   );
 }
+
+/** Runs one async action at a time and keeps its error, for buttons that change files. */
+export function useAction() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      return true;
+    } catch (e) {
+      setError(e);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, run, setError };
+}

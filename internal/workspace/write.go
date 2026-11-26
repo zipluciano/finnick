@@ -48,8 +48,8 @@ type opened struct {
 
 // stores returns the store settings of .sops.yaml (YAML/JSON indentation), like the sops CLI.
 func (ws *Workspace) stores() *sopsconfig.StoresConfig {
-	if ws.Config != nil {
-		if sc, err := sopsconfig.LoadStoresConfig(ws.Config.Path); err == nil {
+	if cfg := ws.Config(); cfg != nil {
+		if sc, err := sopsconfig.LoadStoresConfig(cfg.Path); err == nil {
 			return sc
 		}
 	}
@@ -99,7 +99,8 @@ func (ws *Workspace) UpdateKeys(rel string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if ws.Config == nil {
+	cfg := ws.Config()
+	if cfg == nil {
 		return false, ErrNoRule
 	}
 	data, err := os.ReadFile(path)
@@ -111,7 +112,7 @@ func (ws *Workspace) UpdateKeys(rel string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	rule, err := sopsconfig.LoadCreationRuleForFile(ws.Config.Path, path, map[string]*string{})
+	rule, err := sopsconfig.LoadCreationRuleForFile(cfg.Path, path, map[string]*string{})
 	if err != nil || rule == nil {
 		return false, ErrNoRule
 	}
@@ -205,10 +206,11 @@ func (ws *Workspace) Create(rel string, edits []Edit) (string, []Entry, error) {
 	if format == formats.Binary {
 		return "", nil, fmt.Errorf("%w: new files must end in .env, .yaml, .yml, .json or .ini", ErrUnsupported)
 	}
-	if ws.Config == nil {
+	cfg := ws.Config()
+	if cfg == nil {
 		return "", nil, ErrNoRule
 	}
-	rule, err := sopsconfig.LoadCreationRuleForFile(ws.Config.Path, path, map[string]*string{})
+	rule, err := sopsconfig.LoadCreationRuleForFile(cfg.Path, path, map[string]*string{})
 	if err != nil || rule == nil || len(rule.KeyGroups) == 0 {
 		return "", nil, ErrNoRule
 	}

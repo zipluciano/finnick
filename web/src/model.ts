@@ -56,10 +56,32 @@ export function members(ws: Workspace): Member[] {
     if (!m.name && r.name) m.name = r.name;
     return m;
   };
+  for (const r of ws.config?.keys ?? []) get(r);
   for (const rule of ws.config?.rules ?? []) for (const r of flat(rule.keyGroups)) get(r).rules.add(rule.index);
   for (const f of ws.files) for (const r of flat(f.keyGroups)) get(r).files.add(f.path);
   return [...byKey.values()].sort((a, b) => recipientLabel(a).localeCompare(recipientLabel(b)));
 }
+
+/** The page of one person (or key). */
+export const personHref = (r: Recipient) => `#/person/${encodeURIComponent(`${r.type}:${r.id}`)}`;
+
+/** Whether a person is named or used in .sops.yaml, so Finnick can change their access there. */
+export function inConfig(ws: Workspace, r: Recipient): boolean {
+  const k = recipientKey(r);
+  return (
+    (ws.config?.keys ?? []).some((x) => recipientKey(x) === k) ||
+    (ws.config?.rules ?? []).some((rule) => flat(rule.keyGroups).some((x) => recipientKey(x) === k))
+  );
+}
+
+/** Rules with several key groups (Shamir) are changed by hand: Finnick would not know which group. */
+export const editableRule = (rule: Rule) => (rule.keyGroups?.length ?? 0) <= 1;
+
+/** A name SOPS configs can use as a YAML anchor, as the server checks it. */
+export const validName = (name: string) => /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name);
+
+/** A plausible age public key; the server has the final word. */
+export const validAgeKey = (key: string) => /^age1[02-9ac-hj-np-z]{20,}$/.test(key);
 
 export type AccessState = "granted" | "pending" | "revoking" | "none";
 

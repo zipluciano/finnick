@@ -34,8 +34,12 @@ func (r Rule) matches(rel string) bool {
 
 // Config is the parsed .sops.yaml.
 type Config struct {
-	Path  string `json:"path"`
-	Rules []Rule `json:"rules"`
+	Path string `json:"path"`
+	// Version identifies the bytes the config was read from; changes to it must send it back.
+	Version string `json:"version"`
+	Rules   []Rule `json:"rules"`
+	// Keys are the named (anchored) age keys, in file order, whether or not a rule uses them.
+	Keys []Recipient `json:"keys"`
 	// aliases maps a recipient ID to the anchor name it was declared with.
 	aliases map[string]string
 }
@@ -113,8 +117,15 @@ func parseConfig(path string, data []byte) (*Config, error) {
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	cfg := &Config{Path: path, aliases: map[string]string{}}
+	cfg := &Config{Path: path, Version: Version(data), aliases: map[string]string{}, Keys: []Recipient{}}
 	collectAnchors(&doc, cfg.aliases)
+	seen := map[string]bool{}
+	walkAnchors(&doc, func(n *yaml.Node) {
+		if isAgeRecipient(n.Value) && !seen[n.Value] {
+			seen[n.Value] = true
+			cfg.Keys = append(cfg.Keys, Recipient{Type: "age", ID: n.Value, Name: cfg.aliases[n.Value]})
+		}
+	})
 
 	var raw rawConfig
 	if err := doc.Decode(&raw); err != nil && doc.Kind != 0 {
@@ -137,13 +148,20 @@ func parseConfig(path string, data []byte) (*Config, error) {
 
 // collectAnchors records every anchored scalar (e.g. `- &alice age1...`) so keys can be shown by name.
 func collectAnchors(n *yaml.Node, out map[string]string) {
-	if n.Kind == yaml.ScalarNode && n.Anchor != "" {
+	walkAnchors(n, func(n *yaml.Node) {
 		if _, exists := out[n.Value]; !exists {
 			out[n.Value] = n.Anchor
 		}
+	})
+}
+
+// walkAnchors calls visit for every anchored scalar, in file order.
+func walkAnchors(n *yaml.Node, visit func(*yaml.Node)) {
+	if n.Kind == yaml.ScalarNode && n.Anchor != "" {
+		visit(n)
 	}
 	for _, c := range n.Content {
-		collectAnchors(c, out)
+		walkAnchors(c, visit)
 	}
 }
 

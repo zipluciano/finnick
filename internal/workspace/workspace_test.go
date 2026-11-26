@@ -196,7 +196,7 @@ func TestOpenWithoutConfig(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, ".git"), 0o755)
 	os.MkdirAll(filepath.Join(dir, "sub"), 0o755)
 	ws, err := Open(filepath.Join(dir, "sub"))
-	if err != nil || ws.Config != nil || !strings.HasSuffix(ws.Root, filepath.Base(dir)) {
+	if err != nil || ws.Config() != nil || !strings.HasSuffix(ws.Root, filepath.Base(dir)) {
 		t.Fatalf("git root fallback: %+v %v", ws, err)
 	}
 }

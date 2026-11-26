@@ -324,6 +324,70 @@
   gap: var(--space-3);
 }
 
+/* A list of options to tick, such as the rules a person is in. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--border-width) solid var(--border);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.choice:first-child {
+  border-top: 0;
+}
+
+.choice:hover {
+  background: var(--bg-hover);
+}
+
+.choice--disabled {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.choice--disabled:hover {
+  background: none;
+}
+
+.choice input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* A list of steps, each with its own action. */
+.steps {
+  display: flex;
+  flex-direction: column;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.step:first-child {
+  border-top: 0;
+}
+
 .input--mono {
   font-family: var(--font-mono);
 }

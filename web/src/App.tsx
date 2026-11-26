@@ -8,11 +8,13 @@ import { usePrefs } from "./prefs";
 import { FileView } from "./views/FileView";
 import { NewFileView } from "./views/NewFileView";
 import { PeopleView } from "./views/PeopleView";
+import { PersonView } from "./views/PersonView";
 import { RulesView } from "./views/RulesView";
 
 type Route =
   | { view: "file"; path: string }
   | { view: "people" }
+  | { view: "person"; id: string }
   | { view: "rules" }
   | { view: "new" }
   | { view: "home" };
@@ -21,6 +23,7 @@ function parseRoute(hash: string): Route {
   const [, view, ...rest] = hash.replace(/^#/, "").split("/");
   if (view === "file" && rest.length) return { view: "file", path: decodeURIComponent(rest.join("/")) };
   if (view === "people") return { view: "people" };
+  if (view === "person" && rest.length) return { view: "person", id: decodeURIComponent(rest.join("/")) };
   if (view === "rules") return { view: "rules" };
   if (view === "new") return { view: "new" };
   return { view: "home" };
@@ -92,7 +95,8 @@ export function App() {
 
 function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChanged: () => Promise<void> }) {
   const { t, tn } = usePrefs();
-  if (route.view === "people") return <PeopleView ws={ws} />;
+  if (route.view === "people") return <PeopleView ws={ws} onChanged={onChanged} />;
+  if (route.view === "person") return <PersonView key={route.id} ws={ws} id={route.id} onChanged={onChanged} />;
   if (route.view === "rules") return <RulesView ws={ws} onChanged={onChanged} />;
   if (route.view === "new") return <NewFileView ws={ws} onCreated={onChanged} />;
   const path = route.view === "file" ? route.path : ws.files[0]?.path;
@@ -160,7 +164,11 @@ function Sidebar({
           <div className="nav-section__title truncate" title={ws.root}>
             {rootName(ws.root)}
           </div>
-          <a className="nav-item" href="#/people" aria-current={route.view === "people" ? "page" : undefined}>
+          <a
+            className="nav-item"
+            href="#/people"
+            aria-current={route.view === "people" || route.view === "person" ? "page" : undefined}
+          >
             <Icon name="users" size={15} /> {t("nav.people")}
           </a>
           <a className="nav-item" href="#/rules" aria-current={route.view === "rules" ? "page" : undefined}>

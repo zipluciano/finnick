@@ -67,6 +67,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/create", s.authed(s.csrf(http.HandlerFunc(s.handleCreate))))
 	mux.Handle("POST /api/updatekeys", s.authed(s.csrf(http.HandlerFunc(s.handleUpdateKeys))))
 	mux.Handle("POST /api/rotate", s.authed(s.csrf(http.HandlerFunc(s.handleRotate))))
+	mux.Handle("POST /api/config", s.authed(s.csrf(http.HandlerFunc(s.handleConfig))))
 	mux.Handle("GET /api/settings", s.authed(http.HandlerFunc(s.handleGetSettings)))
 	mux.Handle("PUT /api/settings", s.authed(s.csrf(http.HandlerFunc(s.handlePutSettings))))
 	mux.Handle("GET /", s.authed(http.HandlerFunc(s.handleUI)))
@@ -151,6 +152,10 @@ type workspaceResponse struct {
 }
 
 func (s *Server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
+	if err := s.ws.Reload(); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err)
+		return
+	}
 	id := workspace.LocalIdentity()
 	files, err := s.ws.Scan(id)
 	if err != nil {
@@ -160,7 +165,7 @@ func (s *Server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
 	if files == nil {
 		files = []workspace.File{}
 	}
-	writeJSON(w, workspaceResponse{Version: s.version, Root: s.ws.Root, Config: s.ws.Config, Identity: id, Files: files})
+	writeJSON(w, workspaceResponse{Version: s.version, Root: s.ws.Root, Config: s.ws.Config(), Identity: id, Files: files})
 }
 
 func (s *Server) handleReveal(w http.ResponseWriter, r *http.Request) {
@@ -235,6 +240,23 @@ func (s *Server) handleRotate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]any{"path": path, "version": version})
+}
+
+func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Version string               `json:"version"`
+		Ops     []workspace.ConfigOp `json:"ops"`
+	}
+	if !readJSON(w, r, &req) || req.Version == "" || len(req.Ops) == 0 {
+		writeError(w, http.StatusBadRequest, errors.New("body must be {\"version\", \"ops\": [...]}"))
+		return
+	}
+	cfg, err := s.ws.EditConfig(req.Version, req.Ops)
+	if err != nil {
+		writeError(w, statusFor(err), err)
+		return
+	}
+	writeJSON(w, cfg)
 }
 
 // readPath reads a {"path": "..."} body, answering 400 when it is missing.
@@ -333,6 +355,16 @@ func errorCode(err error) string {
 		{workspace.ErrInvalidKey, "invalid_key"},
 		{workspace.ErrNoRule, "no_rule"},
 		{workspace.ErrFileExists, "file_exists"},
+		{workspace.ErrNoConfig, "no_config"},
+		{workspace.ErrConfigLayout, "config_layout"},
+		{workspace.ErrInvalidName, "invalid_name"},
+		{workspace.ErrNameTaken, "name_taken"},
+		{workspace.ErrInvalidRecipient, "invalid_recipient"},
+		{workspace.ErrPersonExists, "person_exists"},
+		{workspace.ErrPersonNotFound, "person_not_found"},
+		{workspace.ErrRuleNotFound, "rule_not_found"},
+		{workspace.ErrLastRecipient, "last_recipient"},
+		{workspace.ErrKeyGroups, "key_groups"},
 	} {
 		if errors.Is(err, c.err) {
 			return c.code
@@ -344,9 +376,11 @@ func errorCode(err error) string {
 // statusFor maps workspace errors to HTTP statuses.
 func statusFor(err error) int {
 	switch {
-	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists), errors.Is(err, workspace.ErrFileExists):
+	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists), errors.Is(err, workspace.ErrFileExists),
+		errors.Is(err, workspace.ErrNameTaken), errors.Is(err, workspace.ErrPersonExists):
 		return http.StatusConflict
-	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey):
+	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey),
+		errors.Is(err, workspace.ErrInvalidName), errors.Is(err, workspace.ErrInvalidRecipient):
 		return http.StatusBadRequest
 	}
 	return http.StatusUnprocessableEntity
