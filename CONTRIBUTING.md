@@ -103,8 +103,10 @@ updates the cask in [zipluciano/homebrew-tap](https://github.com/zipluciano/home
    git push origin v0.1.0
    ```
 
-The workflow needs the `HOMEBREW_TAP_GITHUB_TOKEN` secret: a fine-grained token with *Contents: read and
-write* on the tap repository only. Release notes come from the commit subjects, grouped by Conventional
+The workflow pushes the cask with an SSH deploy key that has write access to the tap repository only:
+the private key is the `HOMEBREW_TAP_SSH_KEY` secret here, the public key is a deploy key of the tap. To
+replace it, generate a new key pair (`ssh-keygen -t ed25519`), add the public key to the tap with write
+access, update the secret and delete the old deploy key. Release notes come from the commit subjects, grouped by Conventional
 Commit type.
 
 ## AI-assisted contributions

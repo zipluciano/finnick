@@ -64,7 +64,11 @@ homebrew_casks:
     repository:
       owner: zipluciano
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      branch: main
+      # Deploy key with write access to the tap only; it does not expire.
+      git:
+        url: git@github.com:zipluciano/homebrew-tap.git
+        private_key: "{{ .Env.HOMEBREW_TAP_SSH_KEY }}"
     commit_author:
       name: finnick-release
       email: 73149430+zipluciano@users.noreply.github.com
