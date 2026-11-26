@@ -16,6 +16,7 @@ make build        # npm build of web/ + go build → bin/finnick
 make test         # go test ./... + tsc --noEmit
 go test -race ./...
 gofmt -l cmd internal web/embed.go   # must print nothing
+make snapshot                        # GoReleaser archives in dist/, nothing published
 make dev-api DIR=path/to/repo        # API on :7777 (prints an /auth?token=… URL)
 make dev-web                         # Vite on :5173, proxies /api to :7777
 ```

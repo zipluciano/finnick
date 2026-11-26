@@ -11,6 +11,7 @@
 - [x] Bundled design system (tokens, base, components), light and dark
 - [x] Opens the repository it runs in (`.sops.yaml` lookup like sops, git root fallback)
 - [x] Light/dark/system theme and i18n (en, pt-BR, es), saved in `~/.config/finnick/settings.json`
+- [x] Release binaries for macOS, Linux and Windows (GoReleaser), Homebrew cask
 
 ## v0.2: editing
 
@@ -39,4 +40,5 @@
 - [ ] Multiple `.sops.yaml` files in one repo (per-directory configs)
 - [ ] Shamir key groups in the access view
 - [ ] Desktop app wrapper (Wails) for people who prefer not to use the terminal
-- [ ] Release binaries (goreleaser), Homebrew tap, `go install`
+- [ ] npm package with per-platform binaries, so a project can pin Finnick as a devDependency
+- [ ] macOS binaries signed and notarized by Apple

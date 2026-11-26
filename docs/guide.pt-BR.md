@@ -58,13 +58,15 @@ curl -fsSLo /tmp/sops "https://github.com/getsops/sops/releases/download/v${SOPS
 sudo install -m 755 /tmp/sops /usr/local/bin/sops
 ```
 
-**Finnick.** Enquanto não há release, compile a partir do código (precisa de Go 1.26+ e Node 22+):
+**Finnick.** No macOS:
 
 ```bash
-git clone https://github.com/zipluciano/finnick.git
-cd finnick && make build
-ln -s "$PWD/bin/finnick" "$(brew --prefix)/bin/finnick"   # ou qualquer pasta do seu PATH
+brew install --cask zipluciano/tap/finnick
 ```
+
+No Linux e no Windows, baixe o arquivo do seu sistema em
+[Releases](https://github.com/zipluciano/finnick/releases); o [README](../README.md#install) tem os
+comandos.
 
 O Finnick é um binário único: não precisa do `sops` nem do `age` instalados para funcionar.
 

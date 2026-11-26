@@ -14,10 +14,34 @@ creating your key to CI, Docker and Finnick.
 > Status: early. Read-only for now (browse, reveal, access overview). Editing, people management and git sync
 > are next: see [docs/roadmap.md](docs/roadmap.md).
 
+## Install
+
+macOS, with [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask zipluciano/tap/finnick
+```
+
+Linux:
+
+```sh
+VERSION=0.1.0 ARCH=amd64   # or arm64
+curl -fsSLO "https://github.com/zipluciano/finnick/releases/download/v${VERSION}/finnick_${VERSION}_linux_${ARCH}.tar.gz"
+tar xzf "finnick_${VERSION}_linux_${ARCH}.tar.gz" finnick
+sudo install -m 755 finnick /usr/local/bin/finnick
+```
+
+Windows: download `finnick_<version>_windows_amd64.zip` (or `arm64`) from
+[Releases](https://github.com/zipluciano/finnick/releases) and put `finnick.exe` on your `PATH`.
+
+Every release lists `checksums.txt` to verify the download. The macOS binaries are not signed by Apple yet;
+the Homebrew cask removes the quarantine flag so they run. `go install` is not supported, because the UI
+is built with Node and embedded at release time: use a release or [build from source](#build-from-source).
+
 ## Quick start
 
 ```sh
-cd my-app          # anywhere inside the repository
+cd my-app      # anywhere inside the repository
 finnick ui     # opens http://127.0.0.1:<port> in your browser
 finnick ls     # same information as a table
 ```
@@ -70,6 +94,7 @@ Requires Go 1.26+ and Node 22+.
 ```sh
 make build      # builds web/ and embeds it into bin/finnick
 make test
+make snapshot   # release archives for every platform in dist/ (needs GoReleaser)
 ```
 
 UI development with hot reload:
