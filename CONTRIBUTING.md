@@ -89,7 +89,7 @@ dependency is needed and why the standard library or existing code is not enough
 
 ## Releasing (maintainers)
 
-Releases are cut from `main` by pushing a tag; `.github/workflows/release.yml` runs GoReleaser, which
+Releases are cut from `main` by pushing a `v*` tag, which only repository admins can create, move or delete; `.github/workflows/release.yml` runs GoReleaser, which
 builds the UI and the binaries, publishes the GitHub release with the archives and `checksums.txt`, and
 updates the cask in [zipluciano/homebrew-tap](https://github.com/zipluciano/homebrew-tap).
 
