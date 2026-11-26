@@ -8,6 +8,7 @@
 
 ## Checklist
 
+- [ ] Assigned to the person responsible for this pull request
 - [ ] `make test` passes
 - [ ] UI text added to `web/src/i18n/en.ts`, `pt-BR.ts` and `es.ts`
 - [ ] Docs updated (README, guide, architecture) if behaviour changed
