@@ -57,4 +57,5 @@ docs/                 guide (en, pt-BR), architecture, roadmap, adr/
   ADR for hard-to-reverse or security-relevant decisions. When a decision changes, update its ADR (or
   delete it if the decision no longer applies) instead of adding one that supersedes it.
 - **Commits**: Conventional Commits in English, imperative subject, body explaining why.
+- **Pull requests**: always set an assignee (`gh pr create --assignee <login>`); CI fails without one.
 - Keep this file short and current: update it when a command or convention changes.

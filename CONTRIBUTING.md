@@ -54,6 +54,13 @@ sops encrypt -i secrets/dev.env
    contributor ask "why?". If the change alters an existing decision, update that ADR, or delete it when
    the decision no longer applies; `docs/adr/` only describes what is in force.
 
+### Assignee
+
+Every pull request has an assignee: the person responsible for taking it to merge. If you opened it and
+have permission, assign yourself. Contributors from forks cannot set assignees, so a maintainer assigns
+the author (or themselves) when picking it up. The `Pull request / assignee` check fails until someone is
+assigned.
+
 ### Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `refactor:`,

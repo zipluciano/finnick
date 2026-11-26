@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: gomod
     directory: /
+    assignees: [zipluciano]
     schedule:
       interval: weekly
     groups:
@@ -10,6 +11,7 @@ updates:
 
   - package-ecosystem: npm
     directory: /web
+    assignees: [zipluciano]
     schedule:
       interval: weekly
     groups:
@@ -18,5 +20,6 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    assignees: [zipluciano]
     schedule:
       interval: monthly
