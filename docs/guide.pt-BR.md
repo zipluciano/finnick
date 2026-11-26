@@ -201,6 +201,11 @@ O que você encontra na interface:
 - **Aba Secrets:** os nomes das chaves (o SOPS os guarda em claro, então aparecem mesmo sem acesso). Para ver
   os valores, use **Revelar valores**: a decifração acontece na hora, com verificação de integridade, e os
   valores somem sozinhos após 2 minutos. Cada linha tem um botão de copiar, e há um filtro por nome.
+- **Edição:** com os valores revelados, cada linha pode ser editada (valor e nome) ou excluída, e
+  **Adicionar chave** cria uma nova. Em arquivos YAML, JSON e INI, `pai.nome` cria uma chave aninhada. Salvar
+  cifra o arquivo de novo com a mesma chave de dados, exatamente como o `sops edit`; depois, faça commit. Se o
+  arquivo mudou no disco nesse meio-tempo (um `git pull`, outro editor), o Finnick não sobrescreve e recarrega
+  os valores para você refazer a alteração.
 - **Aba Acesso:** quem consegue decifrar o arquivo, lido do próprio arquivo e não só do `.sops.yaml`.
   - **tem acesso**: está no arquivo e na regra.
   - **aguardando updatekeys**: está na regra, mas o arquivo ainda não foi cifrado de novo para essa pessoa.
@@ -212,8 +217,8 @@ O que você encontra na interface:
 - **Rodapé:** tema (sistema, claro, escuro) e idioma (English, Português, Español). As escolhas ficam salvas
   em `~/.config/finnick/settings.json`.
 
-Por enquanto o Finnick é **somente leitura**: para editar, use `sops edit` e depois clique em reescanear
-(↻). Edição, gestão de pessoas e git pela interface estão no [roadmap](roadmap.md).
+Arquivos binários e YAML com vários documentos são somente leitura no Finnick: edite-os com `sops edit` e
+depois clique em reescanear (↻). Gestão de pessoas e git pela interface estão no [roadmap](roadmap.md).
 
 ## 7. Dê acesso a alguém
 

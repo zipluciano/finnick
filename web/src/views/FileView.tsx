@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { api, type Recipient, type SecretFile, type Workspace } from "../api";
-import { Icon } from "../components/Icon";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { api, ApiError, type Edit, type Entry, type Recipient, type Revealed, type SecretFile, type Workspace } from "../api";
+import { Icon, type IconName } from "../components/Icon";
 import { Banner, Command, CopyButton, Empty, RecipientRow } from "../components/ui";
 import { access, flat, isMe, recipientKey } from "../model";
 import { usePrefs } from "../prefs";
 
 const AUTO_HIDE_MS = 2 * 60 * 1000;
 
-export function FileView({ ws, file }: { ws: Workspace; file: SecretFile }) {
+export function FileView({ ws, file, onChanged }: { ws: Workspace; file: SecretFile; onChanged: () => void }) {
   const { t, tp, relativeTime } = usePrefs();
   const [tab, setTab] = useState<"secrets" | "access">("secrets");
   const dir = file.path.includes("/") ? file.path.slice(0, file.path.lastIndexOf("/")) : "";
@@ -62,7 +62,7 @@ export function FileView({ ws, file }: { ws: Workspace; file: SecretFile }) {
         </button>
       </div>
 
-      {tab === "secrets" ? <SecretsTab file={file} /> : <AccessTab ws={ws} file={file} />}
+      {tab === "secrets" ? <SecretsTab file={file} onChanged={onChanged} /> : <AccessTab ws={ws} file={file} />}
     </div>
   );
 }
@@ -85,36 +85,76 @@ function DriftBanner({ file }: { file: SecretFile }) {
   );
 }
 
-function SecretsTab({ file }: { file: SecretFile }) {
-  const { t, errorText } = usePrefs();
-  const [values, setValues] = useState<Map<string, string> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [filter, setFilter] = useState("");
+type RowMode = { kind: "edit"; key: string } | { kind: "delete"; key: string } | { kind: "add" } | null;
 
+function SecretsTab({ file, onChanged }: { file: SecretFile; onChanged: () => void }) {
+  const { t, errorText } = usePrefs();
+  const [data, setData] = useState<Revealed | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<{ title: string; cause: unknown } | null>(null);
+  const [filter, setFilter] = useState("");
+  const [mode, setMode] = useState<RowMode>(null);
+
+  // Values hide after a while without activity; editing counts as activity.
   useEffect(() => {
-    if (!values) return;
-    const timer = setTimeout(() => setValues(null), AUTO_HIDE_MS);
+    if (!data) return;
+    const timer = setTimeout(() => {
+      setData(null);
+      setMode(null);
+    }, AUTO_HIDE_MS);
     return () => clearTimeout(timer);
-  }, [values]);
+  }, [data, mode]);
+
+  // Starting another action dismisses the message about the last one.
+  useEffect(() => {
+    if (mode) setError(null);
+  }, [mode]);
 
   const reveal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.reveal(file.path);
-      setValues(new Map(res.entries.map((e) => [e.key, e.value])));
+      setData(await api.reveal(file.path));
     } catch (e) {
-      setError(e);
+      setError({ title: t("secrets.decryptError"), cause: e });
     } finally {
       setLoading(false);
     }
   };
 
-  const keys = useMemo(
-    () => file.keys.filter((k) => k.toLowerCase().includes(filter.trim().toLowerCase())),
-    [file.keys, filter],
-  );
+  const hide = () => {
+    setData(null);
+    setMode(null);
+  };
+
+  const save = async (edits: Edit[]) => {
+    if (!data) return;
+    setSaving(true);
+    setError(null);
+    try {
+      setData(await api.edit(file.path, data.version, edits));
+      setMode(null);
+      onChanged();
+    } catch (e) {
+      setError({ title: t("secrets.saveError"), cause: e });
+      if (e instanceof ApiError && e.code === "stale") {
+        // Someone (or git) changed the file: show what is there now, so the change can be redone on top.
+        setMode(null);
+        api.reveal(file.path).then(setData, () => {});
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canEdit = !!data?.editable && file.canDecrypt;
+  const rows = useMemo(() => {
+    const all: { key: string; entry?: Entry }[] = data ? data.entries.map((e) => ({ key: e.key, entry: e })) : file.keys.map((key) => ({ key }));
+    const q = filter.trim().toLowerCase();
+    return all.filter((r) => r.key.toLowerCase().includes(q));
+  }, [data, file.keys, filter]);
+  const total = data ? data.entries.length : file.keys.length;
 
   return (
     <div className="stack">
@@ -123,9 +163,9 @@ function SecretsTab({ file }: { file: SecretFile }) {
           {t("secrets.notRecipientBody")}
         </Banner>
       )}
-      {error != null && (
-        <Banner tone="danger" icon="alert" title={t("secrets.decryptError")}>
-          {errorText(error)}
+      {error && (
+        <Banner tone="danger" icon="alert" title={error.title}>
+          {errorText(error.cause)}
         </Banner>
       )}
 
@@ -141,52 +181,226 @@ function SecretsTab({ file }: { file: SecretFile }) {
               aria-label={t("secrets.filter")}
             />
           </div>
-          {values ? (
-            <button type="button" className="btn" onClick={() => setValues(null)}>
-              <Icon name="eyeOff" size={14} /> {t("secrets.hide")}
-            </button>
-          ) : (
-            <button type="button" className="btn btn--primary" onClick={reveal} disabled={!file.canDecrypt || loading}>
-              {loading ? <span className="spinner" /> : <Icon name="eye" size={14} />} {t("secrets.reveal")}
-            </button>
-          )}
+          <div className="row">
+            {canEdit && (
+              <button type="button" className="btn" onClick={() => setMode({ kind: "add" })} disabled={mode?.kind === "add"}>
+                <Icon name="plus" size={14} /> {t("secrets.add")}
+              </button>
+            )}
+            {data ? (
+              <button type="button" className="btn" onClick={hide}>
+                <Icon name="eyeOff" size={14} /> {t("secrets.hide")}
+              </button>
+            ) : (
+              <button type="button" className="btn btn--primary" onClick={reveal} disabled={!file.canDecrypt || loading}>
+                {loading ? <span className="spinner" /> : <Icon name="eye" size={14} />} {t("secrets.reveal")}
+              </button>
+            )}
+          </div>
         </div>
-        {keys.length === 0 ? (
-          <Empty icon="search" title={file.keys.length ? t("secrets.noMatch") : t("secrets.noKeys")} />
+        {rows.length === 0 && mode?.kind !== "add" ? (
+          <Empty icon="search" title={total ? t("secrets.noMatch") : t("secrets.noKeys")} />
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>{t("secrets.key")}</th>
+                <th className="table__key">{t("secrets.key")}</th>
                 <th>{t("secrets.value")}</th>
                 <th className="table__actions" />
               </tr>
             </thead>
             <tbody>
-              {keys.map((k) => {
-                const v = values?.get(k);
+              {rows.map(({ key, entry }) => {
+                if (entry && mode?.kind === "edit" && mode.key === key) {
+                  return <EditRow key={key} entry={entry} saving={saving} onSave={save} onCancel={() => setMode(null)} />;
+                }
+                const deleting = entry && mode?.kind === "delete" && mode.key === key;
                 return (
-                  <tr key={k}>
-                    <td className="mono">{k}</td>
+                  <tr key={key}>
+                    <td className="mono">{key}</td>
                     <td>
-                      {v === undefined ? (
+                      {deleting ? (
+                        <strong>{t("secrets.confirmDelete")}</strong>
+                      ) : entry === undefined ? (
                         <span className="secret-value secret-value--masked">••••••••••</span>
                       ) : (
-                        <span className="secret-value">{v === "" ? <span className="subtle">{t("secrets.empty")}</span> : v}</span>
+                        <span className="secret-value">
+                          {entry.value === "" ? <span className="subtle">{t("secrets.empty")}</span> : entry.value}
+                        </span>
                       )}
                     </td>
                     <td className="table__actions">
-                      {v !== undefined && <CopyButton text={v} label={t("secrets.copy", { key: k })} />}
+                      {deleting ? (
+                        <div className="row">
+                          <button type="button" className="btn btn--sm btn--danger" disabled={saving} onClick={() => save([{ op: "delete", path: entry.path }])}>
+                            {saving ? <span className="spinner" /> : <Icon name="trash" size={13} />} {t("secrets.delete")}
+                          </button>
+                          <button type="button" className="btn btn--sm" disabled={saving} onClick={() => setMode(null)}>
+                            {t("secrets.cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        entry && (
+                          <div className="row">
+                            <CopyButton text={entry.value} label={t("secrets.copy", { key })} />
+                            {canEdit && (
+                              <>
+                                <IconButton icon="pencil" label={t("secrets.editKey", { key })} onClick={() => setMode({ kind: "edit", key })} />
+                                <IconButton icon="trash" label={t("secrets.deleteKey", { key })} onClick={() => setMode({ kind: "delete", key })} />
+                              </>
+                            )}
+                          </div>
+                        )
+                      )}
                     </td>
                   </tr>
                 );
               })}
+              {mode?.kind === "add" && <AddRow format={file.format} saving={saving} onSave={save} onCancel={() => setMode(null)} />}
             </tbody>
           </table>
         )}
       </div>
-      {values && <p className="xsmall subtle">{t("secrets.autoHide")}</p>}
+      {data && (
+        <p className="xsmall subtle">
+          {t("secrets.autoHide")} {data.editable ? t("secrets.editHint") : t("secrets.readOnly")}
+        </p>
+      )}
     </div>
+  );
+}
+
+function IconButton({ icon, label, onClick }: { icon: IconName; label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="btn btn--ghost btn--icon" title={label} aria-label={label} onClick={onClick}>
+      <Icon name={icon} size={14} />
+    </button>
+  );
+}
+
+/** Escape cancels; Cmd/Ctrl+Enter saves (plain Enter adds a line to the value). */
+function editKeys(onSave: () => void, onCancel: () => void) {
+  return (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key === "Escape") onCancel();
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey || e.currentTarget.tagName === "INPUT")) {
+      e.preventDefault();
+      onSave();
+    }
+  };
+}
+
+function ValueField({ value, onChange, onKeyDown, label, autoFocus }: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
+  label: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <textarea
+      className="input"
+      rows={Math.min(8, value.split("\n").length)}
+      value={value}
+      spellCheck={false}
+      autoComplete="off"
+      aria-label={label}
+      autoFocus={autoFocus}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+    />
+  );
+}
+
+function SaveButtons({ saving, onSave, onCancel }: { saving: boolean; onSave: () => void; onCancel: () => void }) {
+  const { t } = usePrefs();
+  return (
+    <div className="row">
+      <button type="button" className="btn btn--sm btn--primary" disabled={saving} onClick={onSave}>
+        {saving ? <span className="spinner" /> : <Icon name="check" size={13} />} {t("secrets.save")}
+      </button>
+      <button type="button" className="btn btn--sm" disabled={saving} onClick={onCancel}>
+        {t("secrets.cancel")}
+      </button>
+    </div>
+  );
+}
+
+function EditRow({ entry, saving, onSave, onCancel }: {
+  entry: Entry;
+  saving: boolean;
+  onSave: (edits: Edit[]) => void;
+  onCancel: () => void;
+}) {
+  const { t } = usePrefs();
+  const last = entry.path[entry.path.length - 1];
+  const renamable = typeof last === "string";
+  const parent = renamable ? entry.key.slice(0, entry.key.length - last.length) : "";
+  const [name, setName] = useState(renamable ? last : "");
+  const [value, setValue] = useState(entry.value);
+
+  const submit = () => {
+    const edits: Edit[] = [];
+    if (value !== entry.value) edits.push({ op: "set", path: entry.path, value });
+    if (renamable && name.trim() !== last) edits.push({ op: "rename", path: entry.path, to: name.trim() });
+    if (edits.length) onSave(edits);
+    else onCancel();
+  };
+  const keys = editKeys(submit, onCancel);
+
+  return (
+    <tr>
+      <td className="table__editing">
+        {renamable ? (
+          <div className="row">
+            {parent && <span className="mono subtle">{parent}</span>}
+            <input className="input input--mono grow" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={keys} aria-label={t("secrets.key")} spellCheck={false} autoComplete="off" />
+          </div>
+        ) : (
+          <span className="mono">{entry.key}</span>
+        )}
+      </td>
+      <td className="table__editing">
+        <div className="stack stack--sm">
+          <ValueField value={value} onChange={setValue} onKeyDown={keys} label={t("secrets.value")} autoFocus />
+          {entry.type !== "string" && <span className="xsmall subtle">{t("secrets.typeHint", { type: entry.type })}</span>}
+          <SaveButtons saving={saving} onSave={submit} onCancel={onCancel} />
+        </div>
+      </td>
+      <td className="table__editing" />
+    </tr>
+  );
+}
+
+function AddRow({ format, saving, onSave, onCancel }: {
+  format: string;
+  saving: boolean;
+  onSave: (edits: Edit[]) => void;
+  onCancel: () => void;
+}) {
+  const { t } = usePrefs();
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  // Nested formats address a key the way the table shows it: parent.child.
+  const path = format === "dotenv" ? [name.trim()] : name.trim().split(".");
+  const placeholder = format === "dotenv" ? "NAME" : format === "ini" ? t("secrets.newKeyIni") : t("secrets.newKeyNested");
+  const submit = () => {
+    if (name.trim()) onSave([{ op: "add", path, value }]);
+  };
+  const keys = editKeys(submit, onCancel);
+
+  return (
+    <tr>
+      <td className="table__editing">
+        <input className="input input--mono" value={name} placeholder={placeholder} onChange={(e) => setName(e.target.value)} onKeyDown={keys} aria-label={t("secrets.key")} spellCheck={false} autoComplete="off" autoFocus />
+      </td>
+      <td className="table__editing">
+        <div className="stack stack--sm">
+          <ValueField value={value} onChange={setValue} onKeyDown={keys} label={t("secrets.value")} />
+          <SaveButtons saving={saving} onSave={submit} onCancel={onCancel} />
+        </div>
+      </td>
+      <td className="table__editing" />
+    </tr>
   );
 }
 

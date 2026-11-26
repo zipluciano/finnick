@@ -63,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /auth", s.handleAuth)
 	mux.Handle("GET /api/workspace", s.authed(http.HandlerFunc(s.handleWorkspace)))
 	mux.Handle("POST /api/reveal", s.authed(s.csrf(http.HandlerFunc(s.handleReveal))))
+	mux.Handle("POST /api/edit", s.authed(s.csrf(http.HandlerFunc(s.handleEdit))))
 	mux.Handle("GET /api/settings", s.authed(http.HandlerFunc(s.handleGetSettings)))
 	mux.Handle("PUT /api/settings", s.authed(s.csrf(http.HandlerFunc(s.handlePutSettings))))
 	mux.Handle("GET /", s.authed(http.HandlerFunc(s.handleUI)))
@@ -163,19 +164,46 @@ func (s *Server) handleReveal(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Path string `json:"path"`
 	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&req); err != nil || req.Path == "" {
+	if !readJSON(w, r, &req) || req.Path == "" {
 		writeError(w, http.StatusBadRequest, errors.New("body must be {\"path\": \"...\"}"))
 		return
 	}
-	entries, err := s.ws.Reveal(req.Path)
+	res, err := s.ws.Reveal(req.Path)
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, err)
+		writeError(w, statusFor(err), err)
 		return
 	}
-	writeJSON(w, map[string]any{"path": req.Path, "entries": entries})
+	writeJSON(w, map[string]any{"path": req.Path, "entries": res.Entries, "version": res.Version, "editable": res.Editable})
+}
+
+func (s *Server) handleEdit(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Path    string           `json:"path"`
+		Version string           `json:"version"`
+		Edits   []workspace.Edit `json:"edits"`
+	}
+	if !readJSON(w, r, &req) || req.Path == "" || req.Version == "" || len(req.Edits) == 0 {
+		writeError(w, http.StatusBadRequest, errors.New("body must be {\"path\", \"version\", \"edits\": [...]}"))
+		return
+	}
+	version, entries, err := s.ws.Edit(req.Path, req.Version, req.Edits)
+	if err != nil {
+		writeError(w, statusFor(err), err)
+		return
+	}
+	writeJSON(w, map[string]any{"path": req.Path, "entries": entries, "version": version, "editable": true})
+}
+
+// readJSON decodes a small request body. Bodies are capped: none of the API needs more.
+func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	return json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(v) == nil
 }
 
 func (s *Server) handleUI(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		writeError(w, http.StatusNotFound, errors.New("no such API call: GET "+r.URL.Path))
+		return
+	}
 	if _, err := fs.Stat(s.assets, "index.html"); err != nil {
 		http.Error(w, "The web UI was not built into this binary. Run `make build` (or `npm --prefix web run build`) and rebuild.", http.StatusNotImplemented)
 		return
@@ -235,17 +263,36 @@ var errSessionExpired = errors.New("session expired: open the URL printed by `fi
 
 // errorCode lets the UI show a translated message for errors it knows about.
 func errorCode(err error) string {
-	switch {
-	case errors.Is(err, errSessionExpired):
-		return "session_expired"
-	case errors.Is(err, workspace.ErrNotRecipient):
-		return "not_recipient"
-	case errors.Is(err, workspace.ErrIntegrity):
-		return "integrity"
-	case errors.Is(err, workspace.ErrInvalidPath):
-		return "invalid_path"
+	for _, c := range []struct {
+		err  error
+		code string
+	}{
+		{errSessionExpired, "session_expired"},
+		{workspace.ErrNotRecipient, "not_recipient"},
+		{workspace.ErrIntegrity, "integrity"},
+		{workspace.ErrInvalidPath, "invalid_path"},
+		{workspace.ErrStale, "stale"},
+		{workspace.ErrUnsupported, "unsupported"},
+		{workspace.ErrKeyExists, "key_exists"},
+		{workspace.ErrKeyNotFound, "key_not_found"},
+		{workspace.ErrInvalidKey, "invalid_key"},
+	} {
+		if errors.Is(err, c.err) {
+			return c.code
+		}
 	}
 	return ""
+}
+
+// statusFor maps workspace errors to HTTP statuses.
+func statusFor(err error) int {
+	switch {
+	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists):
+		return http.StatusConflict
+	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey):
+		return http.StatusBadRequest
+	}
+	return http.StatusUnprocessableEntity
 }
 
 func writeError(w http.ResponseWriter, status int, err error) {

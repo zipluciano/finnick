@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/getsops/sops/v3"
-	"github.com/getsops/sops/v3/aes"
 	"github.com/getsops/sops/v3/cmd/sops/common"
 	"github.com/getsops/sops/v3/cmd/sops/formats"
 	sopsconfig "github.com/getsops/sops/v3/config"
@@ -256,46 +256,90 @@ var (
 	ErrInvalidPath  = errors.New("invalid path")
 )
 
-// Entry is one leaf value of a decrypted file, addressed by a flattened key path.
+// Entry is one leaf value of a decrypted file. Key is the flattened path shown to people
+// ("db.password", "ports[0]"); Path is the same address as a list of map keys and list positions,
+// which is what edits use.
 type Entry struct {
 	Key   string `json:"key"`
-	Value string `json:"value,omitempty"`
+	Path  []any  `json:"path"`
+	Value string `json:"value"`
+	// Type is the value's type in the file: string, int, float, bool or null. Edits keep it.
+	Type string `json:"type"`
+}
+
+// Revealed is a decrypted file: its values and the version they were read from.
+type Revealed struct {
+	Entries []Entry `json:"entries"`
+	Version string  `json:"version"`
+	// Editable is false for files Finnick only reads (binary and multi-document files).
+	Editable bool `json:"editable"`
 }
 
 // Reveal decrypts the file at rel (relative to the root) and returns its values.
 // It verifies the MAC exactly like `sops decrypt` does.
-func (ws *Workspace) Reveal(rel string) ([]Entry, error) {
+func (ws *Workspace) Reveal(rel string) (*Revealed, error) {
 	path, err := ws.resolve(rel)
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	o, err := ws.open(rel, path)
 	if err != nil {
 		return nil, err
 	}
-	tree, err := loadTree(path, data)
-	if err != nil {
-		return nil, err
+	return &Revealed{
+		Entries:  entriesOf(o.tree.Branches),
+		Version:  Version(o.data),
+		Editable: o.format != formats.Binary && len(o.tree.Branches) == 1,
+	}, nil
+}
+
+func entriesOf(branches sops.TreeBranches) []Entry {
+	out := []Entry{}
+	walk(branches, func(k string, path []any, v any) {
+		out = append(out, Entry{Key: k, Path: path, Value: valueText(v), Type: valueType(v)})
+	})
+	return out
+}
+
+func valueText(v any) string {
+	if v == nil {
+		return ""
 	}
-	key, err := tree.Metadata.GetDataKey()
-	if err != nil {
-		return nil, fmt.Errorf("cannot decrypt %s: %w", rel, ErrNotRecipient)
+	return fmt.Sprint(v)
+}
+
+func valueType(v any) string {
+	switch v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "bool"
+	case int, int64:
+		return "int"
+	case float64:
+		return "float"
 	}
-	cipher := aes.NewCipher()
-	mac, err := tree.Decrypt(key, cipher)
-	if err != nil {
-		return nil, err
+	return "string"
+}
+
+// typedLike converts text typed in the UI to the type of the value it replaces, when it parses as
+// that type, so editing a port keeps it a number. Anything else is stored as a string.
+func typedLike(old any, text string) any {
+	switch old.(type) {
+	case int, int64:
+		if n, err := strconv.Atoi(text); err == nil {
+			return n
+		}
+	case float64:
+		if f, err := strconv.ParseFloat(text, 64); err == nil {
+			return f
+		}
+	case bool:
+		if text == "true" || text == "false" {
+			return text == "true"
+		}
 	}
-	original, err := cipher.Decrypt(tree.Metadata.MessageAuthenticationCode, key, tree.Metadata.LastModified.Format(time.RFC3339))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt MAC: %w", err)
-	}
-	if original != mac {
-		return nil, ErrIntegrity
-	}
-	var out []Entry
-	walk(tree.Branches, func(k string, v any) { out = append(out, Entry{Key: k, Value: fmt.Sprint(v)}) })
-	return out, nil
+	return text
 }
 
 // resolve turns a workspace-relative path into an absolute one, refusing anything outside the root.
@@ -309,38 +353,44 @@ func (ws *Workspace) resolve(rel string) (string, error) {
 
 func keyNames(branches sops.TreeBranches) []string {
 	keys := []string{}
-	walk(branches, func(k string, _ any) { keys = append(keys, k) })
+	walk(branches, func(k string, _ []any, _ any) { keys = append(keys, k) })
 	return keys
 }
 
-// walk visits every leaf value with a flattened path: nested maps join with ".", lists use [i].
-func walk(branches sops.TreeBranches, visit func(string, any)) {
+// walk visits every leaf value with a flattened name (nested maps join with ".", lists use [i])
+// and its path within the document.
+func walk(branches sops.TreeBranches, visit func(string, []any, any)) {
 	for i, b := range branches {
 		prefix := ""
 		if len(branches) > 1 {
 			prefix = fmt.Sprintf("doc[%d]", i)
 		}
-		walkValue(prefix, b, visit)
+		walkValue(prefix, nil, b, visit)
 	}
 }
 
-func walkValue(prefix string, v any, visit func(string, any)) {
+func walkValue(prefix string, path []any, v any, visit func(string, []any, any)) {
 	switch t := v.(type) {
 	case sops.TreeBranch:
 		for _, item := range t {
 			if _, isComment := item.Key.(sops.Comment); isComment {
 				continue
 			}
-			walkValue(join(prefix, fmt.Sprint(item.Key)), item.Value, visit)
+			name := fmt.Sprint(item.Key)
+			walkValue(join(prefix, name), appendPath(path, name), item.Value, visit)
 		}
 	case []any:
 		for i, e := range t {
-			walkValue(fmt.Sprintf("%s[%d]", prefix, i), e, visit)
+			walkValue(fmt.Sprintf("%s[%d]", prefix, i), appendPath(path, i), e, visit)
 		}
 	case sops.Comment:
 	default:
-		visit(prefix, t)
+		visit(prefix, path, t)
 	}
+}
+
+func appendPath(path []any, elem any) []any {
+	return append(append(make([]any, 0, len(path)+1), path...), elem)
 }
 
 func join(prefix, key string) string {

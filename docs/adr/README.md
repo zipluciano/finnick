@@ -25,3 +25,4 @@ Rules:
 | [0006](0006-bundled-ui-and-design-system.md) | UI embedded in the binary, with its own design system | Accepted |
 | [0007](0007-preferences-and-translations.md) | Preferences on disk and translations checked by the compiler | Accepted |
 | [0008](0008-ai-assistant-instructions-in-the-repository.md) | Instructions for AI assistants live in the repository | Accepted |
+| [0009](0009-writing-sops-files.md) | Writing SOPS files | Accepted |

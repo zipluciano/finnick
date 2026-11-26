@@ -17,7 +17,8 @@ one thing while `sops` does another, which is worse than no UI.
   upwards, first matching `creation_rules` entry with `path_regex` relative to the config's directory, age
   keys from `SOPS_AGE_KEY`, `SOPS_AGE_KEY_FILE` or the default `keys.txt`.
 - Verify the MAC before showing any value.
-- Writes, when they arrive, must produce files that `sops` reads and edits without noticing a difference.
+- Writes must produce files that `sops` reads and edits without noticing a difference
+  ([ADR 0009](0009-writing-sops-files.md)).
 
 ## Consequences
 

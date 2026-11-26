@@ -14,8 +14,8 @@ It runs inside a repository: the one with your code, a `.sops.yaml` and your enc
 New to SOPS or age? The [step-by-step guide](docs/guide.md) ([Português](docs/guide.pt-BR.md)) goes from
 creating your key to CI, Docker and Finnick.
 
-> Status: early. Read-only for now (browse, reveal, access overview). Editing, people management and git sync
-> are next: see [docs/roadmap.md](docs/roadmap.md).
+> Status: early. Browse, reveal and edit secrets and see who has access. People management and git sync are
+> next: see [docs/roadmap.md](docs/roadmap.md).
 
 ## Install
 

@@ -77,19 +77,19 @@ export function App() {
             </Banner>
           </div>
         )}
-        <Content ws={ws} route={route} />
+        <Content ws={ws} route={route} onChanged={load} />
       </main>
     </div>
   );
 }
 
-function Content({ ws, route }: { ws: Workspace; route: Route }) {
+function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChanged: () => void }) {
   const { t, tn } = usePrefs();
   if (route.view === "people") return <PeopleView ws={ws} />;
   if (route.view === "rules") return <RulesView ws={ws} />;
   const path = route.view === "file" ? route.path : ws.files[0]?.path;
   const file = ws.files.find((f) => f.path === path);
-  if (file) return <FileView key={file.path} ws={ws} file={file} />;
+  if (file) return <FileView key={file.path} ws={ws} file={file} onChanged={onChanged} />;
 
   let title = t("empty.noFiles");
   let hint = tn("empty.noFilesHint", { root: <code>{ws.root}</code> });

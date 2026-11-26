@@ -200,6 +200,11 @@ What you will find:
 - **Secrets tab:** the key names (SOPS stores them in clear, so they show even without access). To see values,
   use **Reveal values**: decryption happens on demand, with an integrity check, and values hide again after
   2 minutes. Each row has a copy button, and there is a filter by name.
+- **Editing:** with the values revealed, each row can be edited (value and name) or deleted, and **Add key**
+  creates a new one. In YAML, JSON and INI files, `parent.name` creates a nested key. Saving encrypts the
+  file again with its data key, exactly like `sops edit`; commit the change afterwards. If the file changed
+  on disk in the meantime (a `git pull`, another editor), Finnick refuses to overwrite it and reloads the
+  values so you can redo the change.
 - **Access tab:** who can decrypt the file, read from the file itself, not only from `.sops.yaml`.
   - **has access**: in the file and in the rule.
   - **pending updatekeys**: in the rule, but the file was not re-encrypted for that person yet.
@@ -211,8 +216,8 @@ What you will find:
 - **Footer:** theme (system, light, dark) and language (English, Português, Español). Choices are saved in
   `~/.config/finnick/settings.json`.
 
-For now Finnick is **read-only**: edit with `sops edit`, then hit rescan (↻). Editing, people management
-and git from the UI are on the [roadmap](roadmap.md).
+Binary files and YAML files with several documents are read-only in Finnick: edit them with `sops edit`, then
+hit rescan (↻). People management and git from the UI are on the [roadmap](roadmap.md).
 
 ## 7. Give someone access
 

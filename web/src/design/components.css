@@ -243,6 +243,17 @@
   border-color: var(--accent-hover);
 }
 
+.btn--danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-fg);
+}
+
+.btn--danger:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-fg);
+}
+
 .btn--ghost {
   border-color: transparent;
   background: transparent;
@@ -280,6 +291,22 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 0;
   border-color: var(--accent);
+}
+
+.input--mono {
+  font-family: var(--font-mono);
+}
+
+/* A value field: one line tall, grows for multi-line values. */
+textarea.input {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 6px var(--space-3);
+  font-family: var(--font-mono);
+  line-height: 1.4;
+  resize: vertical;
 }
 
 .input-with-icon {
@@ -520,10 +547,30 @@
   text-align: right;
 }
 
+/* Key names get a fixed share of the width, so edit fields do not collapse. */
+.table th.table__key {
+  width: 35%;
+}
+
+.table td.table__editing {
+  background: var(--bg-sunken);
+  vertical-align: top;
+}
+
+.table td.table__editing .input {
+  width: 100%;
+  min-width: 6ch;
+}
+
+.table tbody tr:hover td.table__editing {
+  background: var(--bg-sunken);
+}
+
 .secret-value {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .secret-value--masked {

@@ -76,6 +76,20 @@ func TestAuthFlow(t *testing.T) {
 	if w.Code != http.StatusUnprocessableEntity { // x.env does not exist in the empty workspace
 		t.Fatalf("reveal with csrf header: %d %s", w.Code, w.Body)
 	}
+	// Writes need the session and the header too.
+	if w := do(h, "POST", "/api/edit", host, nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("edit without session: %d", w.Code)
+	}
+	if w := do(h, "POST", "/api/edit", host, withCookie); w.Code != http.StatusForbidden {
+		t.Fatalf("edit without csrf header: %d", w.Code)
+	}
+	w = do(h, "POST", "/api/edit", host, func(r *http.Request) { withCookie(r); r.Header.Set(csrfHeader, "1") })
+	if w.Code != http.StatusBadRequest { // the body has no version or edits
+		t.Fatalf("edit with an incomplete body: %d %s", w.Code, w.Body)
+	}
+	if w := do(h, "GET", "/api/edit", host, withCookie); w.Code == http.StatusOK {
+		t.Fatalf("edit over GET: %d", w.Code)
+	}
 }
 
 func TestSettingsAndIndexInjection(t *testing.T) {
