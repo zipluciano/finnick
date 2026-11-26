@@ -30,6 +30,7 @@ Workspace tests run the real `sops` binary and skip without it. Use throwaway ag
 cmd/finnick/          CLI: ui, ls, version
 internal/workspace/   .sops.yaml parsing and editing, file discovery, drift, decryption and writes (getsops/sops/v3)
 internal/server/      loopback HTTP server, auth, JSON API
+internal/git/         git commands for proposing a change as a branch, without touching the checkout
 internal/settings/    theme and locale in ~/.config/finnick/settings.json
 web/src/              React + TypeScript UI (App.tsx, api.ts, views/, components/)
 web/src/design/       design system: tokens.css, base.css, components.css
@@ -51,6 +52,8 @@ docs/                 guide (en, pt-BR), architecture, roadmap, adr/
 - **`.sops.yaml`** ([ADR 0010](docs/adr/0010-editing-sops-yaml.md)): change it only through `EditConfig`,
   which edits the text in place and checks the result means exactly the requested change. Tests compare
   the whole edited file with the expected text.
+- **Keys and git** ([ADR 0011](docs/adr/0011-requesting-access.md)): never replace or return a private key;
+  never touch the user's working tree, index or branch: propose changes as a pushed branch.
 - **Errors**: the API returns error codes (`not_recipient`, `integrity`, …), never translated sentences.
   The UI translates them under `errors.*`.
 - **Translations**: every user-facing string uses `t()`/`tp()`/`tn()` and is added to `en.ts`,

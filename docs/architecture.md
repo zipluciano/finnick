@@ -33,7 +33,9 @@ This document describes the current design. The reasons behind each choice are i
 ```
 
 The CLI (`cmd/finnick`) and the UI share the same `workspace` package, so every UI feature can also
-be a command.
+be a command. For **Request access**, the server also uses `internal/git` to propose a `.sops.yaml` change
+as a branch on `origin`, built in a temporary index so the checkout is never touched
+([ADR 0011](adr/0011-requesting-access.md)).
 
 ## Data model
 

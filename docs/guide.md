@@ -90,6 +90,9 @@ age-keygen -o ~/.config/sops/age/keys.txt
 
 The command prints your public key (`Public key: age1…`). Show it again with `age-keygen -y <path to keys.txt>`.
 
+Or let Finnick do it: open it in the repository (`finnick ui`) and go to **Request access** (in the footer),
+which creates the key in that same place and then helps with [step 7](#7-give-someone-access).
+
 - **Back up** `keys.txt` in your password manager. If you lose it you lose access, and someone has to authorize
   a new key.
 - **Never** send or commit `keys.txt`. Share only the `age1…` line.
@@ -230,7 +233,11 @@ hit rescan (↻). Git from the UI is on the [roadmap](roadmap.md).
 
 ## 7. Give someone access
 
-1. The person follows [step 2](#2-create-your-age-key) and sends you their `age1…` public key.
+1. The person follows [step 2](#2-create-your-age-key) and sends you their `age1…` public key. Or, in
+   Finnick, they use **Request access**: it shows the change to `.sops.yaml` (their key, named, in the rules
+   they pick) and pushes it as a branch built on `origin`'s default branch, without touching their checkout,
+   with a link to open the pull request. Check in the review that the key is really theirs, merge, and
+   continue at step 4.
 2. In Finnick, **People & keys → Add person**: a name, the key, and the rules for the environments they may
    read. Or by hand: add the key under `keys` with a name, and put that name in those rules:
    ```yaml

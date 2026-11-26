@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zipluciano/finnick/internal/git"
 	"github.com/zipluciano/finnick/internal/settings"
 	"github.com/zipluciano/finnick/internal/workspace"
 )
@@ -68,6 +69,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/updatekeys", s.authed(s.csrf(http.HandlerFunc(s.handleUpdateKeys))))
 	mux.Handle("POST /api/rotate", s.authed(s.csrf(http.HandlerFunc(s.handleRotate))))
 	mux.Handle("POST /api/config", s.authed(s.csrf(http.HandlerFunc(s.handleConfig))))
+	mux.Handle("POST /api/identity", s.authed(s.csrf(http.HandlerFunc(s.handleGenerateIdentity))))
+	mux.Handle("POST /api/access", s.authed(s.csrf(http.HandlerFunc(s.handleAccess))))
 	mux.Handle("GET /api/settings", s.authed(http.HandlerFunc(s.handleGetSettings)))
 	mux.Handle("PUT /api/settings", s.authed(s.csrf(http.HandlerFunc(s.handlePutSettings))))
 	mux.Handle("GET /", s.authed(http.HandlerFunc(s.handleUI)))
@@ -367,6 +370,9 @@ func errorCode(err error) string {
 		{workspace.ErrLastRecipient, "last_recipient"},
 		{workspace.ErrKeyGroups, "key_groups"},
 		{workspace.ErrInvalidRegex, "invalid_regex"},
+		{workspace.ErrIdentityExists, "identity_exists"},
+		{git.ErrNoRepo, "no_git"},
+		{git.ErrFailed, "git_failed"},
 	} {
 		if errors.Is(err, c.err) {
 			return c.code
@@ -379,7 +385,8 @@ func errorCode(err error) string {
 func statusFor(err error) int {
 	switch {
 	case errors.Is(err, workspace.ErrStale), errors.Is(err, workspace.ErrKeyExists), errors.Is(err, workspace.ErrFileExists),
-		errors.Is(err, workspace.ErrNameTaken), errors.Is(err, workspace.ErrPersonExists):
+		errors.Is(err, workspace.ErrNameTaken), errors.Is(err, workspace.ErrPersonExists),
+		errors.Is(err, workspace.ErrIdentityExists):
 		return http.StatusConflict
 	case errors.Is(err, workspace.ErrInvalidPath), errors.Is(err, workspace.ErrInvalidKey),
 		errors.Is(err, workspace.ErrInvalidName), errors.Is(err, workspace.ErrInvalidRecipient),

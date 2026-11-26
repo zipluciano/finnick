@@ -179,6 +179,7 @@ function SecretsTab({ file, onChanged }: { file: SecretFile; onChanged: () => vo
       {!file.canDecrypt && (
         <Banner tone="info" icon="lock" title={t("secrets.notRecipientTitle")}>
           {t("secrets.notRecipientBody")}
+          <a href="#/request">{t("request.title")}</a>
         </Banner>
       )}
       {error && (

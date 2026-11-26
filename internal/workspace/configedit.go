@@ -85,30 +85,9 @@ func (ws *Workspace) EditConfig(version string, ops []ConfigOp) (*Config, error)
 			return nil, ErrStale
 		}
 	}
-	before, err := parseConfig(path, data)
+	out, after, err := ApplyConfigOps(path, data, ops)
 	if err != nil {
 		return nil, err
-	}
-	t, err := newYAMLText(data)
-	if err != nil {
-		return nil, layoutErr(err)
-	}
-	want := modelOf(before)
-	for _, op := range ops {
-		if err := applyConfigOp(t, want, op); err != nil {
-			return nil, layoutErr(err)
-		}
-	}
-	out := t.bytes()
-	after, err := parseConfig(path, out)
-	if err != nil {
-		return nil, layoutErr(err)
-	}
-	if !want.equal(modelOf(after)) {
-		return nil, ErrConfigLayout
-	}
-	if emptyRules(after) > emptyRules(before) {
-		return nil, ErrLastRecipient
 	}
 	if creating {
 		err = createFile(path, out)
@@ -122,6 +101,37 @@ func (ws *Workspace) EditConfig(version string, ops []ConfigOp) (*Config, error)
 	ws.config = after
 	ws.mu.Unlock()
 	return after, nil
+}
+
+// ApplyConfigOps returns data, the bytes of the .sops.yaml at path (nil when there is none), changed by
+// ops, and what the result says. It writes nothing: EditConfig and change proposals both use it.
+func ApplyConfigOps(path string, data []byte, ops []ConfigOp) ([]byte, *Config, error) {
+	before, err := parseConfig(path, data)
+	if err != nil {
+		return nil, nil, err
+	}
+	t, err := newYAMLText(data)
+	if err != nil {
+		return nil, nil, layoutErr(err)
+	}
+	want := modelOf(before)
+	for _, op := range ops {
+		if err := applyConfigOp(t, want, op); err != nil {
+			return nil, nil, layoutErr(err)
+		}
+	}
+	out := t.bytes()
+	after, err := parseConfig(path, out)
+	if err != nil {
+		return nil, nil, layoutErr(err)
+	}
+	if !want.equal(modelOf(after)) {
+		return nil, nil, ErrConfigLayout
+	}
+	if emptyRules(after) > emptyRules(before) {
+		return nil, nil, ErrLastRecipient
+	}
+	return out, after, nil
 }
 
 // createFile writes a new file, refusing to replace one that appeared meanwhile.

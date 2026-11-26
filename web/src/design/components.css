@@ -317,6 +317,10 @@
   flex: 0 1 16rem;
 }
 
+.field--narrow {
+  max-width: 20rem;
+}
+
 .field-row {
   display: flex;
   flex-wrap: wrap;
@@ -575,6 +579,38 @@ textarea.input {
 .cmd::before {
   content: "$";
   color: var(--fg-subtle);
+}
+
+.cmd--plain::before {
+  content: none;
+}
+
+/* A change to a text file, one line per row. */
+.diff {
+  margin: 0;
+  padding: var(--space-2) 0;
+  overflow-x: auto;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.diff > div {
+  padding: 0 var(--space-3);
+  white-space: pre;
+}
+
+.diff__add {
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+.diff__del {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
 }
 
 /* ---------- Tabs ---------- */

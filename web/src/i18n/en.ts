@@ -170,6 +170,33 @@ export const en = {
   "person.confirmRemove": "Remove from .sops.yaml?",
   "person.removeAction": "Remove",
 
+  "request.title": "Request access",
+  "request.subtitle": "Get your own age key and propose adding it to {config}. Someone who already has access reviews the change, merges it and updates the keys of the files.",
+  "request.keyTitle": "1. Your key",
+  "request.keyFrom": "Read from {path}. Only this public part is shared.",
+  "request.backupTitle": "Back up your key now",
+  "request.backupBody": "The private key is in {path} and nowhere else. Save a copy in your password manager: if you lose it, you lose access. Never send or commit this file.",
+  "request.noKey": "You have no age key yet. Finnick can create one at {path}, where SOPS looks for it.",
+  "request.generate": "Create my key",
+  "request.generateHint": "Like age-keygen: the private key stays on this computer and is never shown or sent.",
+  "request.generateError": "Could not create the key",
+  "request.alreadyIn": "Your key is already in .sops.yaml as {name}",
+  "request.alreadyInBody": "If you still cannot decrypt a file, ask someone with access to update its keys, then pull.",
+  "request.noConfig": "This repository has no .sops.yaml yet, so there is nothing to request access to.",
+  "request.proposeTitle": "2. Propose the change",
+  "request.nameHint": "How people will see you in .sops.yaml.",
+  "request.rules": "Rules you need",
+  "request.preview": "Preview the change",
+  "request.previewHint": "Nothing is sent yet.",
+  "request.diffTitle": "Change to {file}, made on top of {base}:",
+  "request.push": "Push branch",
+  "request.pushHint": "Pushes {branch} to origin. Your working copy, index and current branch stay as they are.",
+  "request.error": "Could not prepare the request",
+  "request.pushed": "Branch {branch} pushed",
+  "request.openPR": "Open the pull request",
+  "request.openPRByHand": "Open a pull request from {branch} into {base} on your git host.",
+  "request.next": "Once someone with access merges it and runs Update keys, pull and you can decrypt.",
+
   "rules.title": "Rules",
   "rules.noConfigTitle": "No .sops.yaml found",
   "rules.noConfigBody":
@@ -250,6 +277,9 @@ export const en = {
   "errors.last_recipient": "A rule must keep at least one recipient.",
   "errors.key_groups": "Rules with several key groups (Shamir) are changed by hand in .sops.yaml.",
   "errors.invalid_regex": "Not a valid regular expression for SOPS (RE2 syntax).",
+  "errors.identity_exists": "An age key already exists where SOPS looks for it: Finnick never replaces one.",
+  "errors.no_git": "This repository has no git remote named origin to push a branch to.",
+  "errors.git_failed": "A git command failed:",
 } as const;
 
 export type MessageKey = keyof typeof en;

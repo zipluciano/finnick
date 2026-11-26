@@ -9,6 +9,7 @@ import { FileView } from "./views/FileView";
 import { NewFileView } from "./views/NewFileView";
 import { PeopleView } from "./views/PeopleView";
 import { PersonView } from "./views/PersonView";
+import { RequestAccessView } from "./views/RequestAccessView";
 import { RulesView } from "./views/RulesView";
 
 type Route =
@@ -17,6 +18,7 @@ type Route =
   | { view: "person"; id: string }
   | { view: "rules" }
   | { view: "new" }
+  | { view: "request" }
   | { view: "home" };
 
 function parseRoute(hash: string): Route {
@@ -26,6 +28,7 @@ function parseRoute(hash: string): Route {
   if (view === "person" && rest.length) return { view: "person", id: decodeURIComponent(rest.join("/")) };
   if (view === "rules") return { view: "rules" };
   if (view === "new") return { view: "new" };
+  if (view === "request") return { view: "request" };
   return { view: "home" };
 }
 
@@ -99,6 +102,7 @@ function Content({ ws, route, onChanged }: { ws: Workspace; route: Route; onChan
   if (route.view === "person") return <PersonView key={route.id} ws={ws} id={route.id} onChanged={onChanged} />;
   if (route.view === "rules") return <RulesView ws={ws} onChanged={onChanged} />;
   if (route.view === "new") return <NewFileView ws={ws} onCreated={onChanged} />;
+  if (route.view === "request") return <RequestAccessView ws={ws} onChanged={onChanged} />;
   const path = route.view === "file" ? route.path : ws.files[0]?.path;
   const file = ws.files.find((f) => f.path === path);
   if (file) return <FileView key={file.path} ws={ws} file={file} onChanged={onChanged} />;
@@ -231,16 +235,23 @@ function Sidebar({
 
       <div className="sidebar__footer">
         {ws.identity.error ? (
-          <div className="row small" title={ws.identity.source}>
+          <a className="row small" title={ws.identity.source} href="#/request">
             <Icon name="alert" size={14} />
-            <span className="muted">{t("identity.noKey")}</span>
-          </div>
+            <span className="grow">{t("identity.noKey")}</span>
+            <span className="xsmall">{t("request.title")}</span>
+          </a>
         ) : (
           <div className="row small" title={`${ws.identity.source}\n${(ws.identity.recipients ?? []).join("\n")}`}>
             <span className="avatar">{(me?.name ?? "me").slice(0, 2)}</span>
             <div className="grow">
               <div className="truncate">{me?.name ?? t("identity.yourKey")}</div>
-              <div className="xsmall subtle truncate">{me ? t("identity.ageIdentity") : t("identity.notRecipient")}</div>
+              {me ? (
+                <div className="xsmall subtle truncate">{t("identity.ageIdentity")}</div>
+              ) : (
+                <a className="xsmall truncate" href="#/request" title={t("identity.notRecipient")}>
+                  {t("request.title")}
+                </a>
+              )}
             </div>
             <span className="xsmall subtle">v{ws.version}</span>
           </div>

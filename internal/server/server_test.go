@@ -104,6 +104,18 @@ func TestAuthFlow(t *testing.T) {
 	if w.Code != http.StatusBadRequest { // no ops
 		t.Fatalf("config with an incomplete body: %d %s", w.Code, w.Body)
 	}
+	for _, endpoint := range []string{"/api/identity", "/api/access"} {
+		if w := do(h, "POST", endpoint, host, nil); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s without session: %d", endpoint, w.Code)
+		}
+		if w := do(h, "POST", endpoint, host, withCookie); w.Code != http.StatusForbidden {
+			t.Fatalf("%s without csrf header: %d", endpoint, w.Code)
+		}
+	}
+	w = do(h, "POST", "/api/access", host, func(r *http.Request) { withCookie(r); r.Header.Set(csrfHeader, "1") })
+	if w.Code != http.StatusBadRequest { // no name, key or rules
+		t.Fatalf("access with an incomplete body: %d %s", w.Code, w.Body)
+	}
 	for _, endpoint := range []string{"/api/updatekeys", "/api/rotate"} {
 		if w := do(h, "POST", endpoint, host, withCookie); w.Code != http.StatusForbidden {
 			t.Fatalf("%s without csrf header: %d", endpoint, w.Code)
@@ -150,5 +162,17 @@ func TestSettingsAndIndexInjection(t *testing.T) {
 	page := do(h, "GET", "/", host, authed)
 	if !strings.Contains(page.Body.String(), `<html lang="pt-BR" data-theme="dark">`) {
 		t.Fatalf("index not personalized: %s", page.Body)
+	}
+}
+
+func TestLineDiff(t *testing.T) {
+	got := lineDiff("keys:\n  - &a age1a\ncreation_rules:\n  - age: [*a]\n", "keys:\n  - &a age1a\n  - &b age1b\ncreation_rules:\n  - age: [*a, *b]\n")
+	var b strings.Builder
+	for _, l := range got {
+		b.WriteString(l.Op + l.Text + "\n")
+	}
+	want := " keys:\n   - &a age1a\n+  - &b age1b\n creation_rules:\n-  - age: [*a]\n+  - age: [*a, *b]\n"
+	if b.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", b.String(), want)
 	}
 }
