@@ -1,8 +1,21 @@
+# Build output
 /bin/
+/dist/
 /web/node_modules/
 /web/dist/*
 !/web/dist/.gitkeep
-.DS_Store
+
+# Never commit decrypted secrets
 *.dec.*
 .env
 .env.*
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Personal AI assistant settings (shared instructions live in AGENTS.md)
+CLAUDE.local.md
+.claude/settings.local.json
