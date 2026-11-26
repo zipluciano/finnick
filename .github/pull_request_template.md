@@ -11,5 +11,5 @@
 - [ ] `make test` passes
 - [ ] UI text added to `web/src/i18n/en.ts`, `pt-BR.ts` and `es.ts`
 - [ ] Docs updated (README, guide, architecture) if behaviour changed
-- [ ] New ADR in `docs/adr/` if this is a hard-to-reverse or security-relevant decision
+- [ ] ADR added, updated or deleted in `docs/adr/` if this changes a hard-to-reverse or security-relevant decision
 - [ ] `AGENTS.md` updated if a convention or command changed
