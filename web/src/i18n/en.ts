@@ -65,6 +65,19 @@ export const en = {
   "secrets.empty": "(empty)",
   "secrets.copy": "Copy {key}",
   "secrets.autoHide": "Values hide automatically after 2 minutes.",
+  "secrets.add": "Add key",
+  "secrets.editKey": "Edit {key}",
+  "secrets.deleteKey": "Delete {key}",
+  "secrets.delete": "Delete",
+  "secrets.confirmDelete": "Delete this key?",
+  "secrets.save": "Save",
+  "secrets.cancel": "Cancel",
+  "secrets.saveError": "Could not save",
+  "secrets.typeHint": "Stored as {type}: it stays one if the new value is a valid {type}.",
+  "secrets.newKeyNested": "name or parent.name",
+  "secrets.newKeyIni": "section.name",
+  "secrets.editHint": "Saving encrypts the file again with its data key, like sops edit. Commit the change to share it.",
+  "secrets.readOnly": "This file can only be read here: change it with sops edit.",
 
   "access.shamirTitle": "This file uses {count} key groups (Shamir secret sharing)",
   "access.shamirBody": "Decrypting needs keys from more than one group. Group-level details are not shown yet.",
@@ -114,6 +127,11 @@ export const en = {
   "errors.not_recipient": "None of your keys is a recipient of this file.",
   "errors.integrity": "Integrity check failed: the file was modified outside SOPS.",
   "errors.invalid_path": "Invalid path.",
+  "errors.stale": "The file changed on disk after you revealed it. The values were reloaded: make your change again.",
+  "errors.unsupported": "Finnick cannot edit this file (binary or several YAML documents). Use sops edit.",
+  "errors.key_exists": "A key with that name already exists.",
+  "errors.key_not_found": "That key is no longer in the file.",
+  "errors.invalid_key": "Invalid key name. It cannot be empty, .env names have no spaces or '=', .ini keys are section.name, and sops is reserved.",
 } as const;
 
 export type MessageKey = keyof typeof en;

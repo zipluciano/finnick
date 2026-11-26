@@ -15,7 +15,7 @@
 
 ## v0.2: editing
 
-- [ ] Edit, add, rename and delete keys in a file (re-encrypt with the existing data key)
+- [x] Edit, add, rename and delete keys in a file (re-encrypt with the existing data key)
 - [ ] Create a file for a new environment/project; recipients come from the matching rule
 - [ ] Run `updatekeys` for one file or all drifted files
 - [ ] Rotate the data key (`sops rotate`)

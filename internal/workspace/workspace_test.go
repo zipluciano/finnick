@@ -109,16 +109,22 @@ creation_rules:
 func TestReveal(t *testing.T) {
 	dir, _, _ := newRepo(t)
 	ws, _ := Open(dir)
-	entries, err := ws.Reveal("secrets/dev.yaml")
+	res, err := ws.Reveal("secrets/dev.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]string{}
-	for _, e := range entries {
-		got[e.Key] = e.Value
+	got := map[string]Entry{}
+	for _, e := range res.Entries {
+		got[e.Key] = e
 	}
-	if got["db.password"] != "hunter2" || got["ports[1]"] != "443" {
-		t.Errorf("reveal = %v", got)
+	if got["db.password"].Value != "hunter2" || got["ports[1]"].Value != "443" || got["ports[1]"].Type != "int" {
+		t.Errorf("reveal = %+v", got)
+	}
+	if p := got["ports[1]"].Path; len(p) != 2 || p[0] != "ports" || p[1] != 1 {
+		t.Errorf("path of ports[1] = %#v", p)
+	}
+	if !res.Editable || len(res.Version) != 64 {
+		t.Errorf("editable=%v version=%q", res.Editable, res.Version)
 	}
 	if _, err := ws.Reveal("../outside.env"); err == nil {
 		t.Error("path traversal must be rejected")

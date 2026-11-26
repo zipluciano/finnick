@@ -26,7 +26,7 @@ This document describes the current design. The reasons behind each choice are i
    internal/server ─ loopback HTTP, auth token, host check, CSRF header, CSP
                    │
                    ▼
- internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt)
+ internal/workspace ─ Open (find .sops.yaml) · Scan (find SOPS files) · Reveal (decrypt) · Edit
                    │
                    ▼
    getsops/sops/v3 ─ stores (dotenv/yaml/json/ini/binary), key sources (age, KMS, …), AES-GCM
@@ -51,11 +51,15 @@ be a command.
   protection and review are the control, not Finnick.
 - Removing someone from a rule only protects future versions; secrets they could read must be rotated.
 
-## Writes (planned)
+## Writes
 
-Editing will use the SOPS library to decrypt the tree, apply changes, and re-encrypt with the existing data
-key, producing the same output as `sops edit`. Adding/removing people edits `.sops.yaml` while preserving
-comments and anchors (yaml.v3 node API), then runs the equivalent of `sops updatekeys` on affected files.
+Editing uses the SOPS library to decrypt the tree, apply the changes, and encrypt it again with the existing
+data key, producing the same output as `sops edit` ([ADR 0009](adr/0009-writing-sops-files.md)). Each edit
+carries the version (SHA-256) of the file it was based on and is refused if the file changed since; the new
+content replaces the file atomically.
+
+Planned: adding/removing people edits `.sops.yaml` while preserving comments and anchors (yaml.v3 node API),
+then runs the equivalent of `sops updatekeys` on affected files.
 
 ### Git sync and the merge problem
 

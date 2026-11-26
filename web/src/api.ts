@@ -36,7 +36,17 @@ export type Workspace = {
   files: SecretFile[];
 };
 
-export type Entry = { key: string; value: string };
+/** One value of a decrypted file. `path` addresses it in edits: map keys are strings, list positions numbers. */
+export type Entry = { key: string; path: (string | number)[]; value: string; type: string };
+
+/** A decrypted file. `version` must be sent back with edits, so a write never overwrites unseen changes. */
+export type Revealed = { path: string; entries: Entry[]; version: string; editable: boolean };
+
+export type Edit =
+  | { op: "set"; path: (string | number)[]; value: string }
+  | { op: "add"; path: string[]; value: string }
+  | { op: "delete"; path: (string | number)[] }
+  | { op: "rename"; path: (string | number)[]; to: string };
 
 export type Theme = "system" | "light" | "dark";
 export type Settings = { theme: Theme; locale: string };
@@ -63,11 +73,9 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   workspace: () => call<Workspace>("/api/workspace"),
   reveal: (path: string) =>
-    call<{ path: string; entries: Entry[] }>("/api/reveal", {
-      method: "POST",
-      headers: writeHeaders,
-      body: JSON.stringify({ path }),
-    }),
+    call<Revealed>("/api/reveal", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path }) }),
+  edit: (path: string, version: string, edits: Edit[]) =>
+    call<Revealed>("/api/edit", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path, version, edits }) }),
   settings: () => call<Settings>("/api/settings"),
   saveSettings: (s: Settings) =>
     call<Settings>("/api/settings", { method: "PUT", headers: writeHeaders, body: JSON.stringify(s) }),
