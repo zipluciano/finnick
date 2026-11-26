@@ -60,6 +60,16 @@ export type Edit =
   | { op: "delete"; path: (string | number)[] }
   | { op: "rename"; path: (string | number)[]; to: string };
 
+/** A proposed change to .sops.yaml, made from origin's default branch and pushed as a new branch. */
+export type AccessProposal = {
+  base: string;
+  branch: string;
+  file: string;
+  diff: { op: " " | "+" | "-"; text: string }[];
+  pushed?: boolean;
+  url?: string;
+};
+
 export type Theme = "system" | "light" | "dark";
 export type Settings = { theme: Theme; locale: string };
 
@@ -96,6 +106,9 @@ export const api = {
     call<Revealed>("/api/edit", { method: "POST", headers: writeHeaders, body: JSON.stringify({ path, version, edits }) }),
   config: (version: string, ops: ConfigOp[]) =>
     call<Config>("/api/config", { method: "POST", headers: writeHeaders, body: JSON.stringify({ version, ops }) }),
+  generateIdentity: () => call<Identity>("/api/identity", { method: "POST", headers: writeHeaders }),
+  requestAccess: (req: { name: string; key: string; rules: string[]; push: boolean }) =>
+    call<AccessProposal>("/api/access", { method: "POST", headers: writeHeaders, body: JSON.stringify(req) }),
   settings: () => call<Settings>("/api/settings"),
   saveSettings: (s: Settings) =>
     call<Settings>("/api/settings", { method: "PUT", headers: writeHeaders, body: JSON.stringify(s) }),

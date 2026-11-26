@@ -27,3 +27,4 @@ Rules:
 | [0008](0008-ai-assistant-instructions-in-the-repository.md) | Instructions for AI assistants live in the repository | Accepted |
 | [0009](0009-writing-sops-files.md) | Writing SOPS files | Accepted |
 | [0010](0010-editing-sops-yaml.md) | Editing .sops.yaml | Accepted |
+| [0011](0011-requesting-access.md) | Requesting access: creating keys and proposing changes with git | Accepted |

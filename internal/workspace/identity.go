@@ -2,12 +2,18 @@ package workspace
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"filippo.io/age"
 )
+
+// ErrIdentityExists means there already is an age key where SOPS looks: Finnick never replaces one.
+var ErrIdentityExists = errors.New("an age key already exists where SOPS looks for it")
 
 // Identity describes the local age key(s) SOPS will use to decrypt.
 type Identity struct {
@@ -95,4 +101,49 @@ func fileExists(p string) bool {
 	}
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()
+}
+
+// GenerateIdentity creates an age key where SOPS will find it (SOPS_AGE_KEY_FILE, or SOPS' default
+// file), in the same format as age-keygen. The file is created only if nothing is there yet and is
+// readable by the user alone; the private key is never returned.
+func GenerateIdentity() (Identity, error) {
+	if os.Getenv("SOPS_AGE_KEY") != "" || os.Getenv("SOPS_AGE_KEY_CMD") != "" {
+		return Identity{}, ErrIdentityExists
+	}
+	path := os.Getenv("SOPS_AGE_KEY_FILE")
+	if path == "" {
+		path = defaultAgeKeyFile()
+	}
+	if path == "" {
+		return Identity{}, errors.New("cannot tell where SOPS looks for age keys on this system")
+	}
+	if _, err := os.Lstat(path); err == nil {
+		return Identity{}, ErrIdentityExists
+	}
+	id, err := age.GenerateX25519Identity()
+	if err != nil {
+		return Identity{}, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return Identity{}, err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		return Identity{}, ErrIdentityExists
+	}
+	if err != nil {
+		return Identity{}, err
+	}
+	_, err = fmt.Fprintf(f, "# created: %s\n# public key: %s\n%s\n", time.Now().Format(time.RFC3339), id.Recipient(), id)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(path)
+		return Identity{}, err
+	}
+	return LocalIdentity(), nil
 }

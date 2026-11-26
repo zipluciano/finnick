@@ -20,12 +20,12 @@
 - [x] Run `updatekeys` for one file or all drifted files
 - [x] Rotate the data key (`sops rotate`)
 
-## v0.3: people and rules
+## v0.3: people and rules (done)
 
 - [x] Add a person: paste an age public key, give it a name (anchor), choose rules
 - [x] Remove a person, with a guided rotation checklist for what they could read
 - [x] Create/reorder rules with a live preview of which files each rule matches
-- [ ] "Request access" flow: a new member generates a key in the UI and opens a PR adding it
+- [x] "Request access" flow: a new member generates a key in the UI and opens a PR adding it
 
 ## v0.4: git
 

@@ -377,3 +377,28 @@ func TestEditConfigCreatesTheFile(t *testing.T) {
 		t.Errorf("second create: %v, want ErrStale", err)
 	}
 }
+
+func TestGenerateIdentity(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sops", "age", "keys.txt")
+	t.Setenv("SOPS_AGE_KEY", "")
+	t.Setenv("SOPS_AGE_KEY_CMD", "")
+	t.Setenv("SOPS_AGE_KEY_FILE", path)
+	id, err := GenerateIdentity()
+	if err != nil || len(id.Recipients) != 1 || id.Source != path {
+		t.Fatalf("identity %+v, %v", id, err)
+	}
+	st, err := os.Stat(path)
+	if err != nil || st.Mode().Perm() != 0o600 {
+		t.Fatalf("key file mode: %v %v", st, err)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "# public key: "+id.Recipients[0]) || !strings.Contains(string(data), "AGE-SECRET-KEY-1") {
+		t.Errorf("key file is not in age-keygen format")
+	}
+	if _, err := GenerateIdentity(); !errors.Is(err, ErrIdentityExists) {
+		t.Errorf("second generate: %v, want ErrIdentityExists", err)
+	}
+	if again, _ := os.ReadFile(path); string(again) != string(data) {
+		t.Error("an existing key was replaced")
+	}
+}

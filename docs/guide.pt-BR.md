@@ -91,6 +91,9 @@ age-keygen -o ~/.config/sops/age/keys.txt
 
 O comando imprime a chave pública (`Public key: age1…`). Para vê-la de novo, rode `age-keygen -y <caminho do keys.txt>`.
 
+Ou deixe o Finnick fazer isso: abra-o no repositório (`finnick ui`) e vá em **Pedir acesso** (no rodapé),
+que cria a chave nesse mesmo lugar e depois ajuda com o [passo 7](#7-dê-acesso-a-alguém).
+
 - **Faça backup** do `keys.txt` no seu gerenciador de senhas. Se perder o arquivo, você perde o acesso, e alguém
   terá de autorizar uma chave nova.
 - **Nunca** envie nem versione o `keys.txt`. Envie só a linha `age1…`.
@@ -233,7 +236,11 @@ depois clique em reescanear (↻). Git pela interface está no [roadmap](roadmap
 
 ## 7. Dê acesso a alguém
 
-1. A pessoa segue o [passo 2](#2-crie-a-sua-chave-age) e envia a chave pública `age1…`.
+1. A pessoa segue o [passo 2](#2-crie-a-sua-chave-age) e envia a chave pública `age1…`. Ou, no Finnick, usa
+   **Pedir acesso**: ele mostra a mudança no `.sops.yaml` (a chave dela, com nome, nas regras que ela escolher)
+   e envia como uma branch feita sobre a branch padrão do `origin`, sem mexer na cópia de trabalho dela, com
+   um link para abrir o pull request. Na revisão, confira que a chave é mesmo dela, faça o merge e siga no
+   passo 4.
 2. No Finnick, **Pessoas e chaves → Adicionar pessoa**: um nome, a chave e as regras dos ambientes que a pessoa
    pode ler. Ou à mão: adicione a chave em `keys`, com um nome, e coloque esse nome nessas regras:
    ```yaml
