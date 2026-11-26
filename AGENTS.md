@@ -54,6 +54,7 @@ docs/                 guide (en, pt-BR), architecture, roadmap, adr/
 - **Scope**: one repository per run, no central vault or project registry
   ([ADR 0004](docs/adr/0004-one-repository-per-run.md)).
 - **Docs**: update README, `docs/guide.md` and `docs/guide.pt-BR.md` when behaviour changes. Write a new
-  ADR for hard-to-reverse or security-relevant decisions; never rewrite an accepted one.
+  ADR for hard-to-reverse or security-relevant decisions. When a decision changes, update its ADR (or
+  delete it if the decision no longer applies) instead of adding one that supersedes it.
 - **Commits**: Conventional Commits in English, imperative subject, body explaining why.
 - Keep this file short and current: update it when a command or convention changes.

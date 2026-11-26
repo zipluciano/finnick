@@ -51,7 +51,8 @@ sops encrypt -i secrets/dev.env
 4. Update the docs when behaviour changes: `README.md`, `docs/guide.md` (and `docs/guide.pt-BR.md`),
    `docs/architecture.md` or `docs/roadmap.md`.
 5. Write an ADR in `docs/adr/` when the change is hard to reverse, touches security or would make a future
-   contributor ask "why?". Accepted ADRs are not rewritten; a new one supersedes them.
+   contributor ask "why?". If the change alters an existing decision, update that ADR, or delete it when
+   the decision no longer applies; `docs/adr/` only describes what is in force.
 
 ### Commits
 

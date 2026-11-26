@@ -28,4 +28,4 @@ same browser (CSRF, DNS rebinding) and values left behind in caches or history.
 - Opening the UI from another browser or device needs the URL with the token; that is intended.
 - Restarting the CLI ends the session (`session_expired` in the UI).
 - Any new endpoint must go through the same middleware and get tests for the host check and the CSRF
-  header. Changes to this model need a new ADR.
+  header. Changes to this model update this ADR.

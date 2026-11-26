@@ -5,9 +5,12 @@ project's memory, for people and for the coding assistants they use (see `AGENTS
 
 Rules:
 
-- An accepted ADR is not rewritten. To change a decision, add a new ADR that supersedes it and set the old
-  one's status to `Superseded by NNNN`. Typos and broken links can be fixed in place.
-- Number them in order (`NNNN-short-title.md`), copy the shape of an existing one, and open the ADR in the
+- This folder holds only the decisions in force. Every ADR here is accepted and should be followed.
+- When a decision changes, update its ADR to describe the new decision, in the same pull request as the
+  change. Do not add an ADR that amends or supersedes another one.
+- When a decision no longer applies, delete its ADR and fix the links to it. Git history keeps every
+  earlier version.
+- Number new ADRs in order (`NNNN-short-title.md`) and never reuse a number; copy the shape of an existing one, and open the ADR in the
   same pull request as the change it explains.
 - Not every change needs one. Write an ADR when the decision is hard to reverse, affects security, or a
   future contributor would otherwise ask "why is it like this?".
